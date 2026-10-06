@@ -1,0 +1,498 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="An interactive diagram of the branches of artificial intelligence, and where today's agentic AI fits among them.">
+<title>Anatomy of AI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Karla:ital,wght@0,400;0,600;0,700;1,400&display=swap">
+<style>
+  :root {
+    --bg: #F6F7FA;
+    --surface: #FFFFFF;
+    --ink: #23283A;
+    --muted: #5A607A;
+    --border: #E2E5EF;
+    --chip-bg: #FFFFFF;
+    --shadow: 0 1px 2px rgba(35,40,58,.05), 0 8px 24px rgba(35,40,58,.06);
+    --fill-op: .48;
+    --fill-op-hover: .62;
+    --fill-op-dim: .22;
+
+    --ai-line: #9AA1B5;   --ai-fill: #E9EBF2;
+    --ml-line: #4A7CB5;   --ml-fill: #A8C7E8;
+    --dl-line: #6C63BE;   --dl-fill: #B9B4E8;
+    --nlp-line: #3E9770;  --nlp-fill: #A9DCC3;
+    --cv-line: #B8862F;   --cv-fill: #F2D49B;
+    --gen-line: #C25B8C;  --gen-fill: #F5BBD0;
+    --llm-line: #8E56BD;  --llm-fill: #D7BCEB;
+    --ag-line: #C9603C;   --ag-fill: #F6BFAB;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #131623;
+      --surface: #1B1F30;
+      --ink: #E9EBF5;
+      --muted: #9BA2BE;
+      --border: #2A3049;
+      --chip-bg: #1B1F30;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.35);
+      --fill-op: .30;
+      --fill-op-hover: .45;
+      --fill-op-dim: .12;
+
+      --ai-line: #7E8598;  --ai-fill: #3A4056;
+      --ml-line: #9FC4EA;
+      --dl-line: #B4ACEF;
+      --nlp-line: #93D9B7;
+      --cv-line: #EACF93;
+      --gen-line: #F0AECB;
+      --llm-line: #CFB0EC;
+      --ag-line: #F2B49C;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #131623;
+    --surface: #1B1F30;
+    --ink: #E9EBF5;
+    --muted: #9BA2BE;
+    --border: #2A3049;
+    --chip-bg: #1B1F30;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.35);
+    --fill-op: .30;
+    --fill-op-hover: .45;
+    --fill-op-dim: .12;
+
+    --ai-line: #7E8598;  --ai-fill: #3A4056;
+    --ml-line: #9FC4EA;
+    --dl-line: #B4ACEF;
+    --nlp-line: #93D9B7;
+    --cv-line: #EACF93;
+    --gen-line: #F0AECB;
+    --llm-line: #CFB0EC;
+    --ag-line: #F2B49C;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Karla', 'Segoe UI', system-ui, sans-serif;
+    font-size: 16px;
+    line-height: 1.55;
+  }
+  .wrap { max-width: 1220px; margin: 0 auto; padding: 32px 24px 56px; }
+
+  header.page { max-width: 720px; margin-bottom: 24px; }
+  h1 {
+    font-family: 'Bricolage Grotesque', Georgia, serif;
+    font-weight: 700;
+    font-size: clamp(1.9rem, 4vw, 2.6rem);
+    line-height: 1.1;
+    margin: 0 0 10px;
+    text-wrap: balance;
+  }
+  .lede { color: var(--muted); margin: 0; max-width: 62ch; }
+  .lede strong { color: var(--ink); font-weight: 600; }
+  .lede + .lede { margin-top: 10px; }
+
+  .layout { display: flex; gap: 24px; align-items: flex-start; }
+  .diagram-col { flex: 1 1 620px; min-width: 0; }
+  .panel-col { flex: 0 0 330px; position: sticky; top: 20px; }
+  @media (max-width: 900px) {
+    .layout { flex-direction: column; }
+    .panel-col { position: static; flex: 1 1 auto; width: 100%; }
+  }
+
+  .diagram-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    box-shadow: var(--shadow);
+    padding: 14px;
+  }
+  svg { display: block; width: 100%; height: auto; }
+
+  /* --- regions --- */
+  .region {
+    fill-opacity: var(--fill-op);
+    stroke-width: 1.75;
+    cursor: pointer;
+    transition: fill-opacity .18s ease, stroke-width .18s ease;
+    outline: none;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .region, .rlabel, .chip { transition: none !important; }
+  }
+  .region:hover, .region:focus-visible { fill-opacity: var(--fill-op-hover); }
+  .region:focus-visible { stroke-width: 3.5; stroke-dasharray: 6 3; }
+  svg.has-sel .region:not(.selected) { fill-opacity: var(--fill-op-dim); }
+  svg.has-sel .region.selected { fill-opacity: var(--fill-op-hover); stroke-width: 3; }
+
+  #r-ai  { fill: var(--ai-fill);  stroke: var(--ai-line); stroke-dasharray: 7 5; }
+  #r-ml  { fill: var(--ml-fill);  stroke: var(--ml-line); }
+  #r-dl  { fill: var(--dl-fill);  stroke: var(--dl-line); }
+  #r-nlp { fill: var(--nlp-fill); stroke: var(--nlp-line); }
+  #r-cv  { fill: var(--cv-fill);  stroke: var(--cv-line); }
+  #r-gen { fill: var(--gen-fill); stroke: var(--gen-line); }
+  #r-llm { fill: var(--llm-fill); stroke: var(--llm-line); }
+  #r-ag  { fill: var(--ag-fill);  stroke: var(--ag-line); }
+
+  .rlabel {
+    font-family: 'Karla', system-ui, sans-serif;
+    font-weight: 700;
+    letter-spacing: .09em;
+    cursor: pointer;
+    user-select: none;
+    paint-order: stroke;
+    stroke: var(--surface);
+    stroke-width: 3px;
+    stroke-linejoin: round;
+  }
+  .rlabel.small { font-weight: 600; letter-spacing: .04em; }
+  .l-ai  { fill: var(--ai-line); }
+  .l-ml  { fill: var(--ml-line); }
+  .l-dl  { fill: var(--dl-line); }
+  .l-nlp { fill: var(--nlp-line); }
+  .l-cv  { fill: var(--cv-line); }
+  .l-gen { fill: var(--gen-line); }
+  .l-llm { fill: var(--llm-line); }
+  .l-ag  { fill: var(--ag-line); }
+
+  .ex { font-family: 'Karla', system-ui, sans-serif; font-size: 11px; font-style: italic;
+        opacity: 0; pointer-events: none; transition: opacity .25s ease;
+        paint-order: stroke; stroke: var(--surface); stroke-width: 2.5px; stroke-linejoin: round; }
+  svg.show-ex .ex { opacity: .92; }
+
+  /* --- chips --- */
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 7px;
+    font-family: 'Karla', system-ui, sans-serif; font-size: .82rem; font-weight: 600;
+    color: var(--ink);
+    background: var(--chip-bg);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 5px 12px;
+    cursor: pointer;
+    transition: border-color .15s ease, transform .15s ease;
+  }
+  .chip:hover { transform: translateY(-1px); }
+  .chip .dot { width: 9px; height: 9px; border-radius: 50%; }
+  .chip.selected { border-color: currentColor; }
+
+  .toggle-row { display: flex; align-items: center; gap: 10px; margin-top: 16px; color: var(--muted); font-size: .88rem; }
+  .switch { position: relative; width: 40px; height: 22px; flex: none; cursor: pointer; }
+  .switch input { position: absolute; opacity: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
+  .switch .track { position: absolute; inset: 0; border-radius: 999px; background: var(--border); transition: background .18s ease; }
+  .switch .thumb { position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: var(--surface); box-shadow: 0 1px 3px rgba(0,0,0,.25); transition: left .18s ease; }
+  .switch input:checked ~ .track { background: var(--llm-line); }
+  .switch input:checked ~ .thumb { left: 21px; }
+  .switch input:focus-visible ~ .track { outline: 2px solid var(--llm-line); outline-offset: 2px; }
+
+  /* --- panel --- */
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    box-shadow: var(--shadow);
+    padding: 22px 22px 18px;
+  }
+  .panel .crumb {
+    font-size: .72rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--muted); margin: 0 0 6px; display: flex; align-items: center; gap: 8px;
+  }
+  .panel .crumb .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+  .panel h2 {
+    font-family: 'Bricolage Grotesque', Georgia, serif;
+    font-weight: 700; font-size: 1.45rem; margin: 0 0 8px; line-height: 1.15;
+  }
+  .panel p.blurb { margin: 0 0 14px; color: var(--muted); font-size: .95rem; }
+  .panel h3 {
+    font-size: .72rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--muted); margin: 0 0 8px;
+  }
+  .panel ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+  .panel li {
+    font-size: .9rem; padding-left: 16px; position: relative;
+  }
+  .panel li::before {
+    content: ""; position: absolute; left: 0; top: .52em; width: 7px; height: 7px; border-radius: 50%;
+    background: var(--acc, var(--muted));
+  }
+  .panel li strong { display: block; }
+  .panel li .why { display: block; color: var(--muted); margin-top: 2px; }
+  .panel .note {
+    margin: 16px 0 0; padding: 10px 12px; border-radius: 10px; font-size: .85rem;
+    background: var(--bg); border: 1px dashed var(--border); color: var(--muted);
+  }
+  .panel .note strong { color: var(--ink); }
+  .hint { margin: 14px 2px 0; font-size: .8rem; color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="page">
+    <h1>Anatomy of AI</h1>
+    <p class="lede">"AI" is often taken to mean ChatGPT, Gemini or Claude, as if it arrived a few years ago. The field is decades old. Alan Turing asked whether machines could think in 1950, the term "artificial intelligence" was coined for a workshop at Dartmouth in 1956, and the idea goes back further still: in 1843 Ada Lovelace wondered whether Babbage's Analytical Engine might one day compose music. This diagram maps the many branches of AI and shows where today's agentic AI fits among them.</p>
+    <p class="lede"><strong>Click any region</strong> for what it is and real examples.</p>
+  </header>
+
+  <div class="layout">
+    <div class="diagram-col">
+      <div class="diagram-card">
+        <svg id="venn" viewBox="0 0 980 700" role="img" aria-label="Diagram of artificial intelligence: machine learning sits inside AI; deep learning sits inside machine learning; natural language processing and computer vision straddle the machine learning boundary; generative AI sits inside deep learning; large language models sit where generative AI and natural language processing overlap; agentic AI overlaps large language models but extends outside them into the wider field of AI.">
+          <!-- regions (bottom to top) -->
+          <rect id="r-ai" class="region" data-region="ai" x="16" y="16" width="948" height="668" rx="36" tabindex="0" role="button" aria-label="Artificial intelligence"/>
+          <ellipse id="r-ml" class="region" data-region="ml" cx="400" cy="390" rx="320" ry="265" tabindex="0" role="button" aria-label="Machine learning"/>
+          <ellipse id="r-dl" class="region" data-region="dl" cx="440" cy="430" rx="245" ry="185" tabindex="0" role="button" aria-label="Deep learning"/>
+          <ellipse id="r-cv" class="region" data-region="cv" cx="230" cy="470" rx="140" ry="105" tabindex="0" role="button" aria-label="Computer vision"/>
+          <ellipse id="r-nlp" class="region" data-region="nlp" cx="660" cy="270" rx="210" ry="155" tabindex="0" role="button" aria-label="Natural language processing"/>
+          <ellipse id="r-gen" class="region" data-region="gen" cx="525" cy="408" rx="150" ry="125" tabindex="0" role="button" aria-label="Generative AI"/>
+          <ellipse id="r-ag" class="region" data-region="ag" cx="760" cy="430" rx="180" ry="150" tabindex="0" role="button" aria-label="Agentic AI"/>
+          <ellipse id="r-llm" class="region" data-region="llm" cx="595" cy="368" rx="70" ry="44" tabindex="0" role="button" aria-label="Large language models"/>
+
+          <!-- labels -->
+          <text class="rlabel l-ai" data-region="ai" x="44" y="56" font-size="14">ARTIFICIAL INTELLIGENCE</text>
+          <text class="rlabel l-ml" data-region="ml" x="215" y="200" font-size="13.5" text-anchor="middle">MACHINE LEARNING</text>
+          <text class="rlabel l-dl" data-region="dl" x="330" y="303" font-size="12.5" text-anchor="middle">DEEP LEARNING</text>
+          <text class="rlabel l-nlp" data-region="nlp" x="790" y="182" font-size="14" text-anchor="middle">NLP</text>
+          <text class="rlabel l-nlp small" data-region="nlp" x="790" y="199" font-size="9.5" text-anchor="middle">natural language processing</text>
+          <text class="rlabel l-cv" data-region="cv" x="205" y="463" font-size="11.5" text-anchor="middle">COMPUTER VISION</text>
+          <text class="rlabel l-gen" data-region="gen" x="493" y="492" font-size="12" text-anchor="middle">GENERATIVE AI</text>
+          <text class="rlabel l-llm" data-region="llm" x="595" y="357" font-size="12" text-anchor="middle">LLMs</text>
+          <text class="rlabel l-llm small" data-region="llm" x="595" y="370" font-size="9" text-anchor="middle">large language models</text>
+          <text class="rlabel l-ag" data-region="ag" x="830" y="478" font-size="13" text-anchor="middle">AGENTIC AI</text>
+
+          <!-- example annotations (toggle) -->
+          <text class="ex l-ai" x="120" y="118">expert systems · chess engines · sat-nav route-finding</text>
+          <text class="ex l-ml" x="250" y="236" text-anchor="middle">decision trees · credit scoring</text>
+          <text class="ex l-ml" x="400" y="633" text-anchor="middle">fraud alerts · recommendations</text>
+          <text class="ex l-dl" x="330" y="326" text-anchor="middle">image recognition · AlphaFold</text>
+          <text class="ex l-nlp" x="785" y="222" text-anchor="middle">early rule-based chatbots</text>
+          <text class="ex l-nlp" x="548" y="204" text-anchor="middle">translation · spam filters</text>
+          <text class="ex l-cv" x="205" y="486" text-anchor="middle">face recognition · medical scans</text>
+          <text class="ex l-gen" x="525" y="514" text-anchor="middle">AI images · video · music</text>
+          <text class="ex l-llm" x="595" y="388" text-anchor="middle">ChatGPT · Claude · Gemini</text>
+          <text class="ex l-ag" x="830" y="503" text-anchor="middle">tool use · planning · memory</text>
+          <text class="ex l-ag" x="830" y="525" text-anchor="middle">coding and research agents</text>
+        </svg>
+      </div>
+
+      <div class="chips" id="chips" role="tablist" aria-label="Fields of AI"></div>
+
+      <div class="toggle-row">
+        <label class="switch">
+          <input type="checkbox" id="exToggle" aria-label="Show examples on the diagram">
+          <span class="track"></span><span class="thumb"></span>
+        </label>
+        <span>Show examples on the diagram</span>
+      </div>
+    </div>
+
+    <aside class="panel-col">
+      <div class="panel" id="panel" aria-live="polite"></div>
+      <p class="hint">Tip: click a selected region again to return to the overview.</p>
+    </aside>
+  </div>
+</div>
+
+<script>
+const CSS = getComputedStyle(document.documentElement);
+const REGIONS = {
+  ai: {
+    name: "Artificial intelligence",
+    crumb: "The whole field",
+    varname: "--ai-line",
+    blurb: "Any technique that lets a machine do something we would call intelligent: reasoning, planning, perceiving or using language. Much of it doesn't learn from data at all. The outer band of this diagram is hand-written rules, logic and search.",
+    examples: [
+      ["Expert Systems", "Programs built from thousands of hand-written 'if this, then that' rules. MYCIN, built at Stanford in the 1970s, recommended antibiotics for blood infections."],
+      ["Search and Planning", "Exploring possible moves or routes to find the best one. IBM's Deep Blue beat world chess champion Garry Kasparov this way in 1997, and sat-nav route-finding works on the same idea."],
+      ["Knowledge Graphs", "Huge webs of connected facts that machines can reason over, such as the information panels shown beside Google search results."],
+      ["Scheduling and Puzzle Solvers", "Software that juggles rules and limits to find a workable answer, from airline crew rosters to school timetables."],
+      ["Classic Robot Control", "Factory robot arms following carefully engineered instructions, with no learning involved."]
+    ],
+    note: "Everything else on this diagram sits <strong>inside</strong> this box, but not everything in the box learns from data."
+  },
+  ml: {
+    name: "Machine learning",
+    crumb: "Part of AI",
+    varname: "--ml-line",
+    blurb: "Instead of writing the rules by hand, you show the machine lots of examples and it works out the rules itself. Everything in this circle learns from data, and plenty of it has nothing to do with neural networks.",
+    examples: [
+      ["Regression", "Fitting a best-fit line through past data to predict a number or a yes/no outcome. Used in credit scoring and insurance pricing."],
+      ["Decision Trees and Random Forests", "A flowchart of questions learned from data. A random forest combines hundreds of them for a more reliable answer."],
+      ["Gradient Boosting", "Builds many small decision trees, each one correcting the mistakes of the last. Tools such as XGBoost still win many competitions on spreadsheet-style data."],
+      ["Clustering and Anomaly Detection", "Grouping similar customers together, or flagging the one card payment that doesn't fit your usual pattern."],
+      ["Recommendation Systems", "The engines behind the 'you might also like' suggestions on Netflix, Spotify and Amazon."],
+      ["Reinforcement Learning", "Learning by trial and error, rewarded for good outcomes. Used for everything from game-playing programs to choosing which version of a web page to show."]
+    ],
+    note: "The band of machine learning <strong>outside</strong> deep learning quietly powers a large share of the everyday products that use machine learning."
+  },
+  dl: {
+    name: "Deep learning",
+    crumb: "Part of machine learning",
+    varname: "--dl-line",
+    blurb: "Machine learning using neural networks with many layers, loosely inspired by the brain. With enough data and computing power it became the leading approach for images, sound and language, but it is still one branch of machine learning among several.",
+    examples: [
+      ["Convolutional Neural Networks (CNNs)", "Networks that scan an image in small patches to spot edges, then shapes, then whole objects. They sparked the image-recognition breakthrough of 2012."],
+      ["Recurrent Neural Networks (RNNs)", "Networks that read a sequence one step at a time, such as the words in a sentence. A popular type, long short-term memory (LSTM), powered speech and translation tools before transformers took over."],
+      ["Transformers", "A 2017 design that looks at a whole sequence at once and works out which parts relate to each other. It is the foundation of every modern AI chatbot."],
+      ["Speech Recognition", "Turning spoken audio into text, as in OpenAI's Whisper or the dictation feature on your phone."],
+      ["AlphaFold", "Google DeepMind's system for predicting the 3D shape of proteins. Its creators shared the 2024 Nobel Prize in Chemistry."],
+      ["Generative Adversarial Networks (GANs) and Diffusion Models", "The engines of AI image generation. One learns by competing against a critic network; the other learns to remove noise from an image step by step."]
+    ]
+  },
+  nlp: {
+    name: "Natural language processing",
+    crumb: "Straddles the machine learning boundary",
+    varname: "--nlp-line",
+    blurb: "Getting machines to understand and produce human language. It began with hand-written grammar rules (the sliver outside machine learning), moved on to statistics, and is now mostly neural networks. That history is why it overlaps machine learning rather than sitting neatly inside it.",
+    examples: [
+      ["Rule-based Chatbots", "ELIZA (1966) imitated a therapist using simple pattern-matching rules, with no learning at all."],
+      ["Spam Filters and Sentiment Analysis", "Classic statistical techniques that sort your email, or judge whether a product review is positive or negative."],
+      ["Machine Translation", "Automatically translating between languages, as Google Translate and DeepL do."],
+      ["Named Entity Recognition", "Picking out names, places, dates and amounts from text, for example when scanning contracts or invoices."],
+      ["Speech-to-text and text-to-speech", "Voice assistants such as Siri and Alexa, automatic captions on videos, and screen readers."],
+      ["Language Tasks done by Large Language Models", "Summarising, drafting and answering questions. This is where language processing overlaps the large language model lens."]
+    ]
+  },
+  cv: {
+    name: "Computer vision",
+    crumb: "Mostly machine learning, with older roots",
+    varname: "--cv-line",
+    blurb: "Teaching machines to see. Early computer vision relied on hand-crafted rules for spotting edges and shapes; since 2012, deep learning has taken over almost entirely.",
+    examples: [
+      ["Edge and Feature Detection", "Classic techniques, such as the scale-invariant feature transform (SIFT), that find distinctive points in an image without any learning."],
+      ["Image Classification", "Labelling what is in a photo, such as 'cat' or 'bicycle'. It is the task behind searching your phone's photo library."],
+      ["Object Detection", "Drawing boxes around every car, person or road sign in a video in real time. YOLO ('You Only Look Once') is a well-known example, the kind of system used in driver assistance."],
+      ["Face Recognition", "Unlocking your phone, tagging friends in photos, and passport e-gates at airports."],
+      ["Medical Imaging", "Helping radiologists spot tumours and fractures on scans."],
+      ["Optical Character Recognition (OCR)", "Turning pictures of text, such as scanned letters or photographed receipts, into editable text."]
+    ]
+  },
+  gen: {
+    name: "Generative AI",
+    crumb: "Part of deep learning",
+    varname: "--gen-line",
+    blurb: "Deep learning models that create new content rather than just sorting or labelling it. Large language models are its text corner; images, audio, video and music make up the rest.",
+    examples: [
+      ["Image Generators", "Stable Diffusion, Midjourney and DALL·E turn a written description into a picture."],
+      ["Video Generators", "Sora and Veo create short video clips from a text description."],
+      ["Music Generators", "Suno and Udio compose complete songs, vocals included, from a short description."],
+      ["Voice Generation", "ElevenLabs and similar tools produce realistic speech and can clone a voice from a short sample."],
+      ["Code Generation", "Writing software from plain-English instructions, powered by large language models."],
+      ["Large Language Models", "Text generation is where generative AI overlaps language processing."]
+    ]
+  },
+  llm: {
+    name: "Large language models",
+    crumb: "Where generative AI meets language processing",
+    varname: "--llm-line",
+    blurb: "Huge neural networks trained on vast amounts of text to predict the next word (strictly, the next fragment of a word, called a token). This small region is what most people now mean when they say 'AI'.",
+    examples: [
+      ["ChatGPT", "OpenAI's chatbot, built on its GPT (generative pre-trained transformer) models."],
+      ["Claude", "Anthropic's family of models and its assistant of the same name."],
+      ["Gemini", "Google's models, also built into Search, Gmail and Android."],
+      ["Llama and Mistral", "Open-weight models: their trained settings are published, so anyone can download, run and adapt them."],
+      ["DeepSeek", "A Chinese lab whose low-cost, openly released models made headlines in early 2025."]
+    ],
+    note: "Small on the map, enormous in the conversation. That mismatch is the point of this diagram."
+  },
+  ag: {
+    name: "Agentic AI",
+    crumb: "Overlaps language models, but reaches beyond them",
+    varname: "--ag-line",
+    blurb: "Systems that pursue a goal over many steps: plan, use tools, act, check the result and try again. Today's agents use a large language model as their reasoning core, but the loop around it (planning, tools, memory and coordination) is not a language model. That is why this region spills outside every other circle.",
+    examples: [
+      ["Coding Agents", "Claude Code, Devin and Cursor write, run and fix software by combining a language model with real developer tools."],
+      ["Computer-use and Browser Agents", "Agents that operate a screen as a person would: clicking, typing and filling in forms."],
+      ["Deep Research Agents", "They run many searches, read the sources and write up a report, working over minutes rather than seconds."],
+      ["Tool Connections and Coordination", "Frameworks and standards, such as LangGraph and the Model Context Protocol (MCP), that connect a model to apps and data. These sit outside the language model itself."],
+      ["Memory and Retrieval", "Looking up relevant documents before answering, known as retrieval-augmented generation (RAG), plus notes an agent keeps between tasks. Also outside the model itself."],
+      ["Agents without a Language Model", "DeepMind's AlphaGo, which beat Go champion Lee Sedol in 2016, and many robots are fully agentic with no language model at all."]
+    ],
+    note: "The overlap with the language model lens is today's AI agents. The part <strong>outside</strong> is everything an agent needs that a language model alone can't provide."
+  }
+};
+
+const OVERVIEW = `
+  <p class="crumb">How to read this</p>
+  <h2>One field, many circles</h2>
+  <p class="blurb">Every circle sits inside <em>artificial intelligence</em>, but the nesting is deliberately imperfect. Language processing and computer vision are older than machine learning, so they poke outside it. Large language models live in the small lens where generative AI meets language processing.</p>
+  <h3>The key ideas</h3>
+  <ul style="--acc: ${val('--ag-line')}">
+    <li><strong>Agentic AI overlaps large language models but reaches beyond them.</strong><span class="why">An agent's planning loop, tools and memory aren't a language model, and some agents (AlphaGo, many robots) use no language model at all.</span></li>
+    <li><strong>Not all AI is machine learning.</strong><span class="why">Much of AI's history is hand-written rules and search, and much everyday machine learning doesn't use neural networks.</span></li>
+  </ul>
+  <p class="note">Click any region, or a button below the diagram, for examples. Turn on <strong>Show examples</strong> to label the diagram itself.</p>
+`;
+
+function val(v) { return getComputedStyle(document.documentElement).getPropertyValue(v).trim(); }
+
+const svg = document.getElementById('venn');
+const panel = document.getElementById('panel');
+const chipsBox = document.getElementById('chips');
+let selected = null;
+
+function renderPanel(key) {
+  if (!key) { panel.innerHTML = OVERVIEW; return; }
+  const r = REGIONS[key];
+  const color = val(r.varname);
+  const items = r.examples.map(([n, w]) =>
+    `<li><strong>${n}</strong>${w ? `<span class="why">${w}</span>` : ''}</li>`).join('');
+  panel.innerHTML = `
+    <p class="crumb"><span class="dot" style="background:${color}"></span>${r.crumb}</p>
+    <h2>${r.name}</h2>
+    <p class="blurb">${r.blurb}</p>
+    <h3>Examples</h3>
+    <ul style="--acc:${color}">${items}</ul>
+    ${r.note ? `<p class="note">${r.note}</p>` : ''}
+  `;
+}
+
+function select(key) {
+  selected = (selected === key) ? null : key;
+  svg.classList.toggle('has-sel', !!selected);
+  svg.querySelectorAll('.region').forEach(el =>
+    el.classList.toggle('selected', el.dataset.region === selected));
+  chipsBox.querySelectorAll('.chip').forEach(c => {
+    const on = c.dataset.region === selected;
+    c.classList.toggle('selected', on);
+    c.style.color = on ? val(REGIONS[c.dataset.region].varname) : '';
+  });
+  renderPanel(selected);
+}
+
+svg.querySelectorAll('[data-region]').forEach(el => {
+  el.addEventListener('click', () => select(el.dataset.region));
+  el.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); select(el.dataset.region); }
+  });
+});
+
+Object.keys(REGIONS).forEach(key => {
+  const b = document.createElement('button');
+  b.className = 'chip'; b.dataset.region = key; b.type = 'button';
+  b.innerHTML = `<span class="dot" style="background:${val(REGIONS[key].varname)}"></span>${REGIONS[key].name}`;
+  b.addEventListener('click', () => select(key));
+  chipsBox.appendChild(b);
+});
+
+document.getElementById('exToggle').addEventListener('change', e =>
+  svg.classList.toggle('show-ex', e.target.checked));
+
+renderPanel(null);
+
+// keep chip dot colours current if the OS theme flips while open
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+  chipsBox.querySelectorAll('.chip').forEach(c => {
+    c.querySelector('.dot').style.background = val(REGIONS[c.dataset.region].varname);
+  });
+  renderPanel(selected);
+});
+</script>
+</body>
+</html>
