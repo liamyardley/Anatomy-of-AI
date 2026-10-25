@@ -2,7 +2,7 @@
 
 An interactive diagram showing that artificial intelligence is far more than chatbots. It maps the main branches of AI (machine learning, deep learning, natural language processing, computer vision, generative AI and large language models) and shows where today's agentic AI fits among them.
 
-**[View the live page](https://YOUR-USERNAME.github.io/YOUR-REPO-NAME/)**
+**[View the live page](https:[//YOUR-USERNAME.github.io/YOUR-REPO-NAME/](https://liamyardley.github.io/Anatomy-of-AI/))**
 
 ![Screenshot of the Anatomy of AI diagram, with the Agentic AI region selected](preview.png)
 
