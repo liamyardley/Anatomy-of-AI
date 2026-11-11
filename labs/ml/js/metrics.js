@@ -50,15 +50,22 @@ export function confusion(probabilities, labels, threshold) {
 }
 
 // Accuracy: share of all points predicted correctly.
-// Sensitivity: share of blue points correctly caught.
+// Precision: share of the points predicted blue that really are blue.
+// Recall: share of blue points correctly caught. Sensitivity is another
+//   name for exactly the same thing, so both are returned.
 // Specificity: share of red points correctly left alone.
+// F1: one figure that balances precision and recall (their harmonic mean).
 // A value is null when there is nothing to measure it on.
 export function summarise({ tp, fn, fp, tn }) {
   const n = tp + fn + fp + tn;
+  const recall = tp + fn ? tp / (tp + fn) : null;
   return {
     n,
     accuracy: n ? (tp + tn) / n : null,
-    sensitivity: tp + fn ? tp / (tp + fn) : null,
+    precision: tp + fp ? tp / (tp + fp) : null,
+    recall,
+    sensitivity: recall,
     specificity: tn + fp ? tn / (tn + fp) : null,
+    f1: 2 * tp + fp + fn ? (2 * tp) / (2 * tp + fp + fn) : null,
   };
 }

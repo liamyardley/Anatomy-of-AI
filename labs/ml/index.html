@@ -19,7 +19,7 @@
   <span class="bar-title">Machine Learning Lab</span>
 </header>
 
-<main class="wrap">
+<main class="wrap" id="labMain">
   <div class="intro">
     <h1>Machine Learning Lab</h1>
     <p class="lede">Machine learning means showing a computer lots of examples and letting it work out the rule for itself. Here the examples are <strong>red and blue points</strong>, and the rule to find is where red ends and blue begins.</p>
@@ -37,14 +37,12 @@
       <h2 id="plotHeading" class="visually-hidden">The data and the model's predictions</h2>
 
       <div class="card controls">
+        <p class="crumb">The data</p>
+        <h3 class="card-title">Vary the dataset</h3>
         <div class="control-grid">
           <div class="field">
             <label for="datasetSel">Dataset</label>
             <select id="datasetSel"></select>
-          </div>
-          <div class="field">
-            <label for="modelSel">Model</label>
-            <select id="modelSel"></select>
           </div>
           <div class="field field-seed">
             <label for="seedInput">Seed</label>
@@ -73,6 +71,13 @@
           <summary>What is a seed?</summary>
           <p>The datasets are random, but a computer's randomness starts from a number called a seed. The same seed always produces exactly the same dataset, so a whole class can type in the same seed and see the same points. <strong>Regenerate</strong> picks a new seed for you.</p>
         </details>
+      </div>
+
+      <div class="card">
+        <p class="crumb">The dataset</p>
+        <h3 class="card-title" id="datasetTitle"></h3>
+        <p class="blurb" id="datasetText"></p>
+        <p class="note" id="revealNote" hidden></p>
       </div>
 
       <div class="card plot-card">
@@ -126,41 +131,6 @@
       </div>
       <p class="visually-hidden" id="announce" aria-live="polite"></p>
 
-      <!-- How well the trained model does -->
-      <div class="card" id="metricsCard">
-        <p class="crumb">The score</p>
-        <h3 class="card-title">How well did the model do?</h3>
-        <table class="data-table metric-table fitted">
-          <thead>
-            <tr><td></td><th scope="col" class="num">Training points</th><th scope="col" class="num">Test points</th></tr>
-          </thead>
-          <tbody>
-            <tr><th scope="row">Accuracy <small>share of all points predicted correctly</small></th><td class="num" id="accTrain"></td><td class="num" id="accTest"></td></tr>
-            <tr><th scope="row">Sensitivity <small>share of blue points correctly caught</small></th><td class="num" id="sensTrain"></td><td class="num" id="sensTest"></td></tr>
-            <tr><th scope="row">Specificity <small>share of red points correctly left alone</small></th><td class="num" id="specTrain"></td><td class="num" id="specTest"></td></tr>
-          </tbody>
-        </table>
-
-        <div class="matrix-head">
-          <p class="crumb sub" id="matrixLabel">Confusion matrix</p>
-          <fieldset class="segmented">
-            <legend class="visually-hidden">Which points the confusion matrix counts</legend>
-            <label><input type="radio" name="matrixSet" value="test" checked><span>Test points</span></label>
-            <label><input type="radio" name="matrixSet" value="train"><span>Training points</span></label>
-          </fieldset>
-        </div>
-        <table class="data-table matrix fitted" aria-labelledby="matrixLabel">
-          <thead>
-            <tr><td></td><th scope="col" class="num">Predicted blue</th><th scope="col" class="num">Predicted red</th></tr>
-          </thead>
-          <tbody>
-            <tr><th scope="row">Actually blue</th><td class="num good" id="cmTP"></td><td class="num bad" id="cmFN"></td></tr>
-            <tr><th scope="row">Actually red</th><td class="num bad" id="cmFP"></td><td class="num good" id="cmTN"></td></tr>
-          </tbody>
-        </table>
-        <p class="small-print">A <strong>confusion matrix</strong> counts each kind of right and wrong answer. <span id="accuracyWarning"></span></p>
-      </div>
-
       <div class="card">
         <p class="crumb">Reading the plot</p>
         <h3 class="card-title">Colours, shapes and held-back points</h3>
@@ -194,17 +164,18 @@
     <section class="maths-col" id="mathsCol" aria-labelledby="mathsHeading">
       <h2 id="mathsHeading" class="visually-hidden">The mathematics</h2>
 
+      <!-- The model and its settings share one card. The model's own module
+           fills in #modelIntro, #modelDetail and #modelWide. -->
       <div class="card">
-        <p class="crumb">The dataset</p>
-        <h3 class="card-title" id="datasetTitle"></h3>
-        <p class="blurb" id="datasetText"></p>
-        <p class="note" id="revealNote" hidden></p>
-      </div>
+        <p class="crumb">The model</p>
+        <div class="field">
+          <label for="modelSel">Model</label>
+          <select id="modelSel"></select>
+        </div>
+        <div id="modelIntro" class="model-intro"></div>
 
-      <div id="modelIntro"></div>
-
-      <div class="card">
-        <p class="crumb">Settings</p>
+        <hr class="rule">
+        <p class="crumb sub">Settings</p>
         <h3 class="card-title">Change the model</h3>
         <p class="blurb" id="experimentNote"></p>
         <div id="paramControls" class="params"></div>
@@ -214,6 +185,53 @@
       <div id="modelDetail"></div>
     </section>
   </div>
+
+  <!-- Full width: the model's worked example and its picture, side by side -->
+  <div id="modelWide" class="wide-block"></div>
+
+  <!-- Full width: how well the trained model does -->
+  <section class="card wide-block" id="metricsCard" aria-labelledby="resultsHeading">
+    <p class="crumb">Results</p>
+    <h2 class="card-title" id="resultsHeading">How well did the model do?</h2>
+    <div class="split">
+      <div>
+        <div class="matrix-head">
+          <p class="crumb" id="matrixLabel">Confusion matrix</p>
+          <fieldset class="segmented">
+            <legend class="visually-hidden">Which points the confusion matrix counts</legend>
+            <label><input type="radio" name="matrixSet" value="test" checked><span>Test points</span></label>
+            <label><input type="radio" name="matrixSet" value="train"><span>Training points</span></label>
+          </fieldset>
+        </div>
+        <table class="data-table matrix fitted" aria-labelledby="matrixLabel">
+          <thead>
+            <tr><td></td><th scope="col" class="num">Predicted blue</th><th scope="col" class="num">Predicted red</th></tr>
+          </thead>
+          <tbody>
+            <tr><th scope="row">Actually blue</th><td class="num good" id="cmTP"></td><td class="num bad" id="cmFN"></td></tr>
+            <tr><th scope="row">Actually red</th><td class="num bad" id="cmFP"></td><td class="num good" id="cmTN"></td></tr>
+          </tbody>
+        </table>
+        <p class="small-print">A <strong>confusion matrix</strong> counts each kind of right and wrong answer. Blue counts as the positive class, so the measures on the right are all worked out from these four numbers.</p>
+      </div>
+      <div>
+        <p class="crumb" id="metricLabel">Measures</p>
+        <table class="data-table metric-table fitted" aria-labelledby="metricLabel">
+          <thead>
+            <tr><td></td><th scope="col" class="num">Training points</th><th scope="col" class="num">Test points</th></tr>
+          </thead>
+          <tbody>
+            <tr><th scope="row">Accuracy <small>share of all points predicted correctly</small></th><td class="num" id="accTrain"></td><td class="num" id="accTest"></td></tr>
+            <tr><th scope="row">Precision <small>share of the points predicted blue that really are blue</small></th><td class="num" id="precTrain"></td><td class="num" id="precTest"></td></tr>
+            <tr><th scope="row">Recall, also called sensitivity <small>share of blue points correctly caught</small></th><td class="num" id="sensTrain"></td><td class="num" id="sensTest"></td></tr>
+            <tr><th scope="row">Specificity <small>share of red points correctly left alone</small></th><td class="num" id="specTrain"></td><td class="num" id="specTest"></td></tr>
+            <tr><th scope="row">F1 score <small>one figure that balances precision and recall; it is high only when both are</small></th><td class="num" id="f1Train"></td><td class="num" id="f1Test"></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <p class="small-print" id="accuracyWarning"></p>
+  </section>
 </main>
 
 <script type="module" src="js/main.js"></script>

@@ -2,9 +2,10 @@
 // model's live numbers, a worked example for the query point, and two small
 // charts (the loss curve and the sigmoid).
 //
-// A panel is created with two places to draw into:
-//   intro   above the settings: what the model is and its formula
-//   detail  below the settings: its internals, worked example and visuals
+// A panel is created with three places to draw into:
+//   intro   inside the model card, above the settings: the idea and formula
+//   detail  under the model card: the model's internals
+//   wide    the full-width block: worked example and picture, side by side
 // and returns { update(info, context) }, where `info` comes from the model's
 // explain() and `context` is { threshold, status, flash }.
 
@@ -97,10 +98,8 @@ function sigmoidChart(scores, threshold, example) {
   </svg>`;
 }
 
-export function createLogisticPanel({ intro, detail }) {
+export function createLogisticPanel({ intro, detail, wide }) {
   intro.innerHTML = `
-    <div class="card">
-      <p class="crumb">The model</p>
       <h3 class="card-title">${note.title}</h3>
       <p class="blurb">${note.idea}</p>
       <div class="formula" data-role="formula"></div>
@@ -108,16 +107,15 @@ export function createLogisticPanel({ intro, detail }) {
       <p class="blurb">${note.degreeNote}</p>
       <p class="blurb">${note.training}</p>
       <div class="formula" data-role="loss"></div>
-      <p class="small-print">${note.lossKey}</p>
-      <p class="crumb sub">With the current numbers in</p>
-      <div class="formula fitted" data-role="fitted"></div>
-      <p class="small-print" data-role="fittedNote"></p>
-    </div>`;
+      <p class="small-print">${note.lossKey}</p>`;
 
   detail.innerHTML = `
     <div class="card">
       <p class="crumb">Inside the model</p>
       <h3 class="card-title">Weights and loss</h3>
+      <p class="crumb sub first">The formula with the current numbers in</p>
+      <div class="formula fitted" data-role="fitted"></div>
+      <p class="small-print" data-role="fittedNote"></p>
       <div class="facts fitted">
         <div><span class="fact-label">Iteration</span><span class="num" data-role="iteration"></span></div>
         <div><span class="fact-label">Loss (log-loss)</span><span class="num" data-role="lossValue"></span></div>
@@ -130,9 +128,11 @@ export function createLogisticPanel({ intro, detail }) {
           <tbody data-role="weights"></tbody>
         </table>
       </div>
-    </div>
+    </div>`;
 
-    <div class="card">
+  wide.innerHTML = `
+    <div class="card split">
+      <div>
       <p class="crumb">Worked example</p>
       <h3 class="card-title">The calculation for your query point</h3>
       <p class="blurb" data-role="exampleEmpty">${COPY.queryEmpty}</p>
@@ -150,17 +150,17 @@ export function createLogisticPanel({ intro, detail }) {
         <li><strong>Squash the score</strong> into a probability with the sigmoid. <span class="num-line">p = 1 / (1 + e<sup>&minus;z</sup>) = <span class="num" data-role="p"></span></span></li>
         <li><strong>Compare with the threshold.</strong> <span class="num-line" data-role="verdict"></span></li>
       </ol>
-    </div>
-
-    <div class="card">
+      </div>
+      <div>
       <p class="crumb">See it</p>
       <h3 class="card-title">From score to probability</h3>
       <div class="chart fitted" data-role="sigmoidChart"></div>
       <p class="small-print">${note.sigmoid}</p>
+      </div>
     </div>`;
 
   const el = {};
-  for (const node of [...intro.querySelectorAll('[data-role]'), ...detail.querySelectorAll('[data-role]')]) {
+  for (const node of [intro, detail, wide].flatMap((part) => [...part.querySelectorAll('[data-role]')])) {
     el[node.dataset.role] = node;
   }
 

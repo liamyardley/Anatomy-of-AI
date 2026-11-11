@@ -30,8 +30,8 @@ const els = {
   train: $('trainBtn'), pause: $('pauseBtn'), step: $('stepBtn'), skip: $('skipBtn'),
   trainMessage: $('trainMessage'),
   threshold: $('thresholdRange'), thresholdOut: $('thresholdOut'),
-  metricsCard: $('metricsCard'), mathsCol: $('mathsCol'),
-  modelIntro: $('modelIntro'), modelDetail: $('modelDetail'),
+  main: $('labMain'),
+  modelIntro: $('modelIntro'), modelDetail: $('modelDetail'), modelWide: $('modelWide'),
   params: $('paramControls'), showAll: $('showAll'),
 };
 
@@ -301,16 +301,15 @@ function updateTrainUI() {
   } else if (status === 'done') message = spec().finished(state.snapshot);
   els.trainMessage.textContent = message;
   els.trainMessage.dataset.status = status;
-  els.mathsCol.dataset.status = status;
-  els.metricsCard.dataset.status = status;
+  els.main.dataset.status = status; // fades every number that is out of date
 }
 
-// The scores under the plot. They are shown only once training has finished,
+// The results at the foot of the page. They are shown only once training has finished,
 // and they follow the threshold instantly.
 function updateMetrics() {
   const cells = {
-    train: [$('accTrain'), $('sensTrain'), $('specTrain')],
-    test: [$('accTest'), $('sensTest'), $('specTest')],
+    train: ['accTrain', 'precTrain', 'sensTrain', 'specTrain', 'f1Train'].map($),
+    test: ['accTest', 'precTest', 'sensTest', 'specTest', 'f1Test'].map($),
   };
   const matrix = [$('cmTP'), $('cmFN'), $('cmFP'), $('cmTN')];
   if (!state.scores) {
@@ -321,9 +320,8 @@ function updateMetrics() {
   for (const set of ['train', 'test']) {
     const counts = confusion(state.scores[set].probabilities, state.scores[set].labels, state.threshold);
     const summary = summarise(counts);
-    setValue(cells[set][0], pct(summary.accuracy));
-    setValue(cells[set][1], pct(summary.sensitivity));
-    setValue(cells[set][2], pct(summary.specificity));
+    const values = [summary.accuracy, summary.precision, summary.recall, summary.specificity, summary.f1];
+    values.forEach((value, i) => setValue(cells[set][i], pct(value)));
     if (set === state.matrixSet) {
       [counts.tp, counts.fn, counts.fp, counts.tn].forEach((n, i) => setValue(matrix[i], String(n)));
     }
@@ -388,7 +386,9 @@ function selectModel(key) {
   state.scores = null;
   plot.update({ stale: false });
   plot.setModel(null);
-  panel = spec().createPanel({ intro: els.modelIntro, detail: els.modelDetail });
+  panel = spec().createPanel({
+    intro: els.modelIntro, detail: els.modelDetail, wide: els.modelWide,
+  });
   buildParamControls();
   updatePanel();
   updateTrainUI();

@@ -118,6 +118,13 @@ test('confusion matrix and summary: blue is the positive class', () => {
   assert.equal(summary.accuracy, 3 / 5);
   assert.equal(summary.sensitivity, 2 / 3);
   assert.equal(summary.specificity, 1 / 2);
+  assert.equal(summary.precision, 2 / 3);
+  assert.equal(summary.recall, summary.sensitivity);
+  assert.equal(summary.f1, 2 / 3);
+  // Nothing predicted blue: precision has nothing to measure, F1 is zero.
+  const none = summarise({ tp: 0, fn: 3, fp: 0, tn: 2 });
+  assert.equal(none.precision, null);
+  assert.equal(none.f1, 0);
   // A higher threshold predicts blue less often.
   assert.deepEqual(confusion([0.9, 0.6, 0.4, 0.2, 0.7], [1, 1, 1, 0, 0], 0.8),
     { tp: 1, fn: 2, fp: 0, tn: 2 });

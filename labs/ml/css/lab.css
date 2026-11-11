@@ -103,13 +103,9 @@ code {
 /* --- controls --- */
 .control-grid {
   display: grid; gap: 12px;
-  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.2fr) minmax(0, .7fr);
+  grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr);
 }
 .control-grid.sliders { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 14px; }
-@media (max-width: 520px) {
-  .control-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .control-grid .field-seed { grid-column: 1 / -1; }
-}
 .field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .field label {
   font-size: .72rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
@@ -283,3 +279,30 @@ span.num { display: inline-block; border-radius: 4px; padding: 0 3px; font-weigh
 @media (prefers-reduced-motion: reduce) {
   .fitted { transition: none; }
 }
+
+/* ===== Page layout: two columns, then two full-width blocks ===== */
+
+.wide-block { margin-top: 24px; }
+.wide-block:empty { display: none; }
+
+/* One card, two columns inside it, with a rule between them. */
+.split { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 40px; }
+.split > div { min-width: 0; }
+.card.split > div + div, .card .split > div + div { border-left: 1px solid var(--border); padding-left: 40px; }
+@media (max-width: 900px) {
+  .split { grid-template-columns: minmax(0, 1fr); gap: 20px 0; }
+  .card.split > div + div, .card .split > div + div {
+    border-left: 0; padding-left: 0; border-top: 1px solid var(--border); padding-top: 20px;
+  }
+}
+
+/* The model card: picker, then the model's own text, then its settings. */
+.model-intro { margin-top: 16px; }
+.crumb.sub.first { margin-top: 10px; }
+
+/* Results */
+#metricsCard .split { margin-top: 12px; }
+#metricsCard .matrix-head { margin: 0 0 8px; min-height: 38px; }
+#metricsCard #metricLabel { margin: 0 0 8px; min-height: 38px; display: flex; align-items: center; }
+.matrix td.num { font-size: 1.5rem; padding: 18px 10px; }
+.matrix tbody th { vertical-align: middle; }
