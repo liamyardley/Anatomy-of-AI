@@ -30,7 +30,13 @@
        straight from a folder, so this doubles as the explanation. -->
   <p class="notice" id="loadNotice">This lab needs to be opened through a web server. If you are running it from a folder on your computer, open a terminal in the project folder, run <code>python -m http.server</code>, then visit <code>http://localhost:8000/labs/ml/</code>.</p>
 
+  <!-- The page is three blocks. Block 1: the model, the data and training. -->
   <div class="lab">
+    <header class="block-head">
+      <p class="crumb">Part 1</p>
+      <h2 class="block-title">The model, the data and training</h2>
+      <p class="block-sub">Choose a model and a dataset, then press Train and watch the model learn.</p>
+    </header>
     <!-- The plot comes first in the page so it is first on small screens;
          on wide screens the stylesheet places it on the right. -->
     <section class="plot-col" aria-labelledby="plotHeading">
@@ -186,17 +192,28 @@
     </section>
   </div>
 
-  <!-- Full width: the model's worked example and its picture, side by side -->
-  <div id="modelWide" class="wide-block"></div>
+  <!-- Block 2: how the model calculates. The model's own module fills it. -->
+  <section class="card block wide-block" aria-labelledby="calcHeading">
+    <header class="block-head">
+      <p class="crumb">Part 2</p>
+      <h2 class="block-title" id="calcHeading">From weights to probabilities</h2>
+      <p class="block-sub">How the trained model turns one point into a prediction, step by step.</p>
+    </header>
+    <div id="modelWide" class="block-body"></div>
+  </section>
 
-  <!-- Full width: how well the trained model does -->
-  <section class="card wide-block" id="metricsCard" aria-labelledby="resultsHeading">
-    <p class="crumb">Results</p>
-    <h2 class="card-title" id="resultsHeading">How well did the model do?</h2>
+  <!-- Block 3: how well the trained model does -->
+  <section class="card block wide-block" id="metricsCard" aria-labelledby="resultsHeading">
+    <header class="block-head">
+      <p class="crumb">Part 3</p>
+      <h2 class="block-title" id="resultsHeading">Results</h2>
+      <p class="block-sub">How well did the model do, on the points it learned from and on the ones it has never seen?</p>
+    </header>
+    <div class="block-body">
     <div class="split">
       <div>
         <div class="matrix-head">
-          <p class="crumb" id="matrixLabel">Confusion matrix</p>
+          <h3 class="card-title" id="matrixLabel">Confusion matrix</h3>
           <fieldset class="segmented">
             <legend class="visually-hidden">Which points the confusion matrix counts</legend>
             <label><input type="radio" name="matrixSet" value="test" checked><span>Test points</span></label>
@@ -215,7 +232,7 @@
         <p class="small-print">A <strong>confusion matrix</strong> counts each kind of right and wrong answer. Blue counts as the positive class, so the measures on the right are all worked out from these four numbers.</p>
       </div>
       <div>
-        <p class="crumb" id="metricLabel">Measures</p>
+        <h3 class="card-title" id="metricLabel">Measures</h3>
         <table class="data-table metric-table fitted" aria-labelledby="metricLabel">
           <thead>
             <tr><td></td><th scope="col" class="num">Training points</th><th scope="col" class="num">Test points</th></tr>
@@ -231,6 +248,7 @@
       </div>
     </div>
     <p class="small-print" id="accuracyWarning"></p>
+    </div>
   </section>
 </main>
 

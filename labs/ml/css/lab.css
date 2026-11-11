@@ -306,3 +306,38 @@ span.num { display: inline-block; border-radius: 4px; padding: 0 3px; font-weigh
 #metricsCard #metricLabel { margin: 0 0 8px; min-height: 38px; display: flex; align-items: center; }
 .matrix td.num { font-size: 1.5rem; padding: 18px 10px; }
 .matrix tbody th { vertical-align: middle; }
+
+/* ===== Three blocks =====
+   Each block is one card with a heading. Inside block 1 the smaller cards
+   become plain sections separated by dividers. */
+
+.block-head { grid-area: head; padding: 18px 24px 16px; border-bottom: 1px solid var(--border); }
+.block-title {
+  font-family: 'Bricolage Grotesque', Georgia, serif;
+  font-weight: 700; font-size: 1.5rem; line-height: 1.15; margin: 0;
+}
+.block-sub { margin: 4px 0 0; color: var(--muted); font-size: .95rem; }
+.card.block { padding: 0; }
+.block-body { padding: 20px 24px; }
+#metricsCard .split { margin-top: 0; }
+#metricsCard .matrix-head .card-title, #metricsCard #metricLabel { margin: 0 0 8px; }
+#metricsCard .matrix-head .card-title { margin: 0; }
+
+.lab {
+  grid-template-areas: "head head" "maths plot";
+  gap: 0; align-items: stretch;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 18px;
+  box-shadow: var(--shadow);
+}
+.lab .plot-col, .lab .maths-col { gap: 0; }
+.lab .maths-col { border-right: 1px solid var(--border); }
+.lab .card {
+  background: none; border: 0; border-top: 1px solid var(--border); border-radius: 0;
+  box-shadow: none; padding: 20px 24px;
+}
+.lab .plot-col > .card:first-of-type, .lab .maths-col > .card:first-of-type { border-top: 0; }
+@media (max-width: 900px) {
+  .lab { grid-template-areas: "head" "plot" "maths"; }
+  .lab .maths-col { border-right: 0; border-top: 1px solid var(--border); }
+  .block-head, .block-body, .lab .card { padding-left: 16px; padding-right: 16px; }
+}

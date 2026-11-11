@@ -131,7 +131,7 @@ export function createLogisticPanel({ intro, detail, wide }) {
     </div>`;
 
   wide.innerHTML = `
-    <div class="card split">
+    <div class="split">
       <div>
       <p class="crumb">Worked example</p>
       <h3 class="card-title">The calculation for your query point</h3>
