@@ -1,0 +1,78 @@
+/* Shared design tokens for Anatomy of AI: colours, shadows and dark mode.
+   Used by the home page and by every lab, so they stay visually consistent. */
+
+:root {
+  --bg: #F6F7FA;
+  --surface: #FFFFFF;
+  --ink: #23283A;
+  --muted: #5A607A;
+  --border: #E2E5EF;
+  --chip-bg: #FFFFFF;
+  --shadow: 0 1px 2px rgba(35,40,58,.05), 0 8px 24px rgba(35,40,58,.06);
+  --fill-op: .48;
+  --fill-op-hover: .62;
+  --fill-op-dim: .22;
+
+  --ai-line: #9AA1B5;   --ai-fill: #E9EBF2;
+  --ml-line: #4A7CB5;   --ml-fill: #A8C7E8;
+  --dl-line: #6C63BE;   --dl-fill: #B9B4E8;
+  --nlp-line: #3E9770;  --nlp-fill: #A9DCC3;
+  --cv-line: #B8862F;   --cv-fill: #F2D49B;
+  --gen-line: #C25B8C;  --gen-fill: #F5BBD0;
+  --llm-line: #8E56BD;  --llm-fill: #D7BCEB;
+  --ag-line: #C9603C;   --ag-fill: #F6BFAB;
+
+  /* The two classes in the labs. Shape (circle or triangle) always backs up colour. */
+  --class-red: #C44A3A;   --class-red-soft: #F3B8AE;
+  --class-blue: #2F6FB7;  --class-blue-soft: #AECBEE;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #131623;
+    --surface: #1B1F30;
+    --ink: #E9EBF5;
+    --muted: #9BA2BE;
+    --border: #2A3049;
+    --chip-bg: #1B1F30;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.35);
+    --fill-op: .30;
+    --fill-op-hover: .45;
+    --fill-op-dim: .12;
+
+    --ai-line: #7E8598;  --ai-fill: #3A4056;
+    --ml-line: #9FC4EA;
+    --dl-line: #B4ACEF;
+    --nlp-line: #93D9B7;
+    --cv-line: #EACF93;
+    --gen-line: #F0AECB;
+    --llm-line: #CFB0EC;
+    --ag-line: #F2B49C;
+
+    --class-red: #F08B7A;   --class-red-soft: #7A3A33;
+    --class-blue: #86B6F0;  --class-blue-soft: #2F4E78;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #131623;
+  --surface: #1B1F30;
+  --ink: #E9EBF5;
+  --muted: #9BA2BE;
+  --border: #2A3049;
+  --chip-bg: #1B1F30;
+  --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.35);
+  --fill-op: .30;
+  --fill-op-hover: .45;
+  --fill-op-dim: .12;
+
+  --ai-line: #7E8598;  --ai-fill: #3A4056;
+  --ml-line: #9FC4EA;
+  --dl-line: #B4ACEF;
+  --nlp-line: #93D9B7;
+  --cv-line: #EACF93;
+  --gen-line: #F0AECB;
+  --llm-line: #CFB0EC;
+  --ag-line: #F2B49C;
+
+  --class-red: #F08B7A;   --class-red-soft: #7A3A33;
+  --class-blue: #86B6F0;  --class-blue-soft: #2F4E78;
+}
