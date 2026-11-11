@@ -169,7 +169,7 @@ details.explain p strong { color: var(--ink); }
 .segmented input:focus-visible + span { outline: 2px solid var(--ml-line); outline-offset: 1px; }
 .mark { width: 14px; height: 14px; flex: none; }
 
-.check { display: inline-flex; align-items: center; gap: 7px; font-size: .88rem; color: var(--muted); cursor: pointer; margin-left: auto; }
+.check { display: inline-flex; align-items: center; gap: 7px; font-size: .9rem; font-weight: 600; color: var(--ink); cursor: pointer; margin-top: 12px; }
 .check input { width: 17px; height: 17px; accent-color: var(--ml-line); margin: 0; }
 
 .status { margin: 8px 0 0; font-size: .88rem; color: var(--ink); font-variant-numeric: tabular-nums; }

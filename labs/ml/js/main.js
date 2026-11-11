@@ -32,7 +32,7 @@ const state = {
   noise: 0.5,            // slider position, 0 to 1 (0.5 is the default amount)
   count: DEFAULT_POINT_COUNT,
   trainShare: DEFAULT_TRAIN_SHARE,
-  showTest: true,
+  showTest: false,       // test points start hidden
   mode: 'explore',       // 'explore' or 'edit'
   activeClass: 1,        // colour of new points in Edit mode: 0 red, 1 blue
   query: null,           // { x1, x2 }
@@ -90,7 +90,8 @@ function addPoint(where, otherClass) {
   const y = otherClass ? 1 - state.activeClass : state.activeClass;
   const test = drawIsTest(state.trainShare, state.manualRng);
   state.points.push({ x1: where.x1, x2: where.x2, y, test });
-  announce(`Added a ${className(y)} ${test ? 'test' : 'training'} point at ${fmt(where.x1)}, ${fmt(where.x2)}.`);
+  const hiddenNote = test && !state.showTest ? ' It is hidden: tick "Show test points" to see it.' : '';
+  announce(`Added a ${className(y)} ${test ? 'test' : 'training'} point at ${fmt(where.x1)}, ${fmt(where.x2)}.${hiddenNote}`);
   render();
 }
 
@@ -145,7 +146,7 @@ function render() {
   // Status line
   els.status.textContent = counts.total === 0
     ? COPY.customEmpty
-    : `${counts.total} points: ${counts.train} training, ${counts.test} test. ${counts.red} red, ${counts.blue} blue.`;
+    : `${counts.total} points: ${counts.train} training, ${counts.test} test${state.showTest ? '' : ' (hidden)'}. ${counts.red} red, ${counts.blue} blue.`;
 
   // Dataset card
   const note = DATASET_NOTES[state.type];

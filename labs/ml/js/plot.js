@@ -12,7 +12,7 @@ const TAP_SLOP = 10;       // how far a finger may drift and still count as a ta
 export function createPlot(canvas, handlers) {
   const ctx = canvas.getContext('2d');
   let size = 0;            // canvas width and height in CSS pixels
-  let view = { points: [], showTest: true, query: null, mode: 'explore' };
+  let view = { points: [], showTest: false, query: null, mode: 'explore' };
   let keyboardActive = false;
   let press = null;        // the touch or click currently in progress
   let lastPointerType = 'mouse';
@@ -57,12 +57,13 @@ export function createPlot(canvas, handlers) {
     const [px, py] = toPx(p.x1, p.x2);
     const colour = p.y === 1 ? c.blue : c.red;
     if (p.test) {
-      // Test points are hollow.
+      // Test points are hollow and grey: the model is not told their class.
+      // The shape still records the true answer, so predictions can be checked.
       shapePath(px, py, p.y, POINT_RADIUS - 0.6);
       ctx.fillStyle = c.surface;
       ctx.fill();
       ctx.lineWidth = 1.7;
-      ctx.strokeStyle = colour;
+      ctx.strokeStyle = c.muted;
       ctx.stroke();
     } else {
       shapePath(px, py, p.y, POINT_RADIUS);

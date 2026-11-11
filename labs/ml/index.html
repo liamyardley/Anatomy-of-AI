@@ -99,7 +99,6 @@
 
           <button type="button" id="clearBtn" class="btn small" hidden>Clear</button>
 
-          <label class="check"><input type="checkbox" id="showTest" checked><span>Show test points</span></label>
         </div>
 
         <p class="small-print" id="modeHint"></p>
@@ -133,10 +132,12 @@
             <span><strong>Solid points are training points.</strong> These are the examples a model learns from.</span>
           </li>
           <li>
-            <svg class="mark" viewBox="0 0 14 14" aria-hidden="true"><circle cx="7" cy="7" r="4.4" fill="none" stroke="var(--class-red)" stroke-width="1.6"/></svg>
-            <span><strong>Hollow points are test points.</strong> They are held back and never shown to the model, so they reveal how well it copes with data it has not seen. About 3 in every 10 points are test points.</span>
+            <svg class="mark" viewBox="0 0 14 14" aria-hidden="true"><circle cx="7" cy="7" r="4.4" fill="none" stroke="var(--muted)" stroke-width="1.6"/></svg>
+            <svg class="mark" viewBox="0 0 14 14" aria-hidden="true"><path d="M7 2.4 11.8 11H2.2Z" fill="none" stroke="var(--muted)" stroke-width="1.6" stroke-linejoin="round"/></svg>
+            <span><strong>Hollow grey points are test points.</strong> They are held back and never shown to the model, so they reveal how well it copes with data it has not seen. They are drawn without colour because, as far as the model is concerned, their class is unknown; the shape still records the true answer (circle for red, triangle for blue) so predictions can be checked against it. This lab uses a <strong>70/30 train/test split</strong>: 70% of the points are used for training and 30% are held back for testing.</span>
           </li>
         </ul>
+        <label class="check"><input type="checkbox" id="showTest"><span>Show test points</span></label>
       </div>
 
       <div class="card">
