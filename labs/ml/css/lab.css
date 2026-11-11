@@ -341,3 +341,58 @@ span.num { display: inline-block; border-radius: 4px; padding: 0 3px; font-weigh
   .lab .maths-col { border-right: 0; border-top: 1px solid var(--border); }
   .block-head, .block-body, .lab .card { padding-left: 16px; padding-right: 16px; }
 }
+
+/* ===== k-nearest neighbours, decision tree and random forest ===== */
+
+/* --- an on/off setting --- */
+.switch { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+.switch-label {
+  font-size: .72rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted);
+}
+.switch input { width: 18px; height: 18px; accent-color: var(--ml-line); margin: 0; }
+.switch output { margin-left: auto; font-size: .9rem; font-variant-numeric: tabular-nums; }
+
+/* --- extra chart marks --- */
+.chart .band { fill: var(--ml-line); opacity: .14; }
+.chart .faded { opacity: .28; }
+.chart .mean-line { stroke: var(--ink); stroke-width: 2; }
+.chart .tick.strong { fill: var(--ink); font-weight: 700; }
+
+/* --- the tree diagram --- */
+.tree-diagram {
+  margin-top: 12px; padding: 8px; max-height: 380px; overflow: auto;
+  border: 1px solid var(--border); border-radius: 10px; background: var(--bg);
+}
+.tree-diagram svg { display: block; margin: 0 auto; }
+.tree-diagram .edge { stroke: var(--muted); stroke-width: 1.2; }
+.tree-diagram .edge-label { fill: var(--muted); font-size: 10px; font-family: 'Karla', system-ui, sans-serif; }
+.tree-diagram .node { cursor: pointer; }
+.tree-diagram .node rect { fill: var(--surface); stroke: var(--border); stroke-width: 1.2; }
+.tree-diagram .leaf.lean-red rect { fill: color-mix(in srgb, var(--class-red) 22%, var(--surface)); }
+.tree-diagram .leaf.lean-blue rect { fill: color-mix(in srgb, var(--class-blue) 22%, var(--surface)); }
+.tree-diagram .node.on-route rect { stroke: var(--ink); stroke-width: 1.6; stroke-dasharray: 3 3; }
+.tree-diagram .node.selected rect { stroke: var(--ml-line); stroke-width: 2.6; stroke-dasharray: none; }
+.tree-diagram text { font-family: 'Karla', system-ui, sans-serif; fill: var(--ink); pointer-events: none; }
+.tree-diagram .question { font-size: 11px; font-weight: 700; }
+.tree-diagram .counts { font-size: 10px; font-variant-numeric: tabular-nums; }
+.tree-diagram .count-red { fill: var(--class-red); }
+.tree-diagram .count-blue { fill: var(--class-blue); }
+.data-table tr.chosen th, .data-table tr.chosen td {
+  background: color-mix(in srgb, var(--ml-line) 16%, transparent); font-weight: 700;
+}
+
+/* --- forest thumbnails --- */
+.thumbs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 10px; }
+.thumb { margin: 0; }
+.thumb-frame {
+  position: relative; aspect-ratio: 1 / 1; overflow: hidden;
+  border: 1px solid var(--border); border-radius: 8px; background: var(--surface);
+}
+.thumb[data-empty="true"] .thumb-frame { border-style: dashed; background: transparent; }
+.thumb canvas { display: block; width: 100%; height: 100%; }
+.thumb-dot {
+  position: absolute; width: 9px; height: 9px; margin: -4.5px 0 0 -4.5px; border-radius: 50%;
+  background: var(--ink); border: 2px solid var(--surface); pointer-events: none;
+}
+.thumb figcaption { margin-top: 3px; font-size: .75rem; color: var(--muted); text-align: center; }
+.thumb[data-empty="true"] figcaption { opacity: .5; }

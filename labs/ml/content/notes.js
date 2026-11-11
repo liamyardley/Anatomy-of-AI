@@ -20,7 +20,7 @@ export const DATASET_NOTES = {
   },
   checker: {
     title: 'Checkerboard',
-    text: 'Four quarters in alternating colours, a little blurred where they meet. Each colour appears in two opposite corners.',
+    text: 'Four rectangular blocks in alternating colours, a little blurred where they meet. Each colour appears in two opposite corners.',
   },
   moons: {
     title: 'Moons',
@@ -84,6 +84,48 @@ export const MODEL_NOTES = {
     fitted: 'These are the model\'s actual weights, updated at every training step.',
     sigmoid: 'Each training point is placed on the sigmoid curve by its score z. Points far to the right are confidently blue, points far to the left are confidently red, and the ones near the middle are the uncertain ones close to the boundary. For a straight-line boundary, z grows in step with how far the point is from the line, so distance becomes probability. (Blue points are drawn just above the curve and red just below, so they do not hide each other.)',
     lossCurve: 'The loss after each iteration. A curve that falls and flattens means training has settled.',
+    threshold: '',
+  },
+
+  knn: {
+    title: 'k-nearest neighbours',
+    idea: 'k-nearest neighbours (k-NN for short) has no formula to fit. To classify a point, it finds the <strong>k</strong> training points closest to it, its <strong>neighbours</strong>, and lets them vote. "Closest" means the ordinary straight-line distance between two points, called the <strong>Euclidean distance</strong>.',
+    distanceKey: 'Here (x<sub>1</sub>, x<sub>2</sub>) is the point being classified and (a<sub>1</sub>, a<sub>2</sub>) is a stored training point.',
+    vote: 'The probability of blue is simply the share of the k neighbours that are blue. With <strong>distance weighting</strong> switched on, each neighbour\'s vote counts for more the closer it is.',
+    training: 'There is <strong>no training</strong> in the usual sense. Pressing Train only copies the training points into memory. All the real work happens later, at <strong>prediction time</strong>: every single prediction means measuring the distance to every stored point.',
+    memory: 'This table is the whole model: a copy of the training points and nothing else. No weights, no rules.',
+    memoryUntrained: 'The memory is empty. Press Train to watch the training points being copied in.',
+    filling: 'Once the points are stored, the plot fills in from the top. Each patch of the plot asks its own k nearest neighbours which colour it should be.',
+    picture: 'The stored points nearest to your query point, lined up by distance. Everything inside the shaded band is one of the k nearest and gets a vote; everything beyond it is ignored. On the plot, the same k points are joined to the query point, and the dashed circle reaches exactly as far as the furthest of them.',
+    threshold: 'With k-nearest neighbours the probability can only take a few values (with k = 5: 0, 0.2, 0.4, 0.6, 0.8 or 1), so as the threshold moves the boundary stays put and then jumps, instead of gliding.',
+  },
+
+  tree: {
+    title: 'Decision tree',
+    idea: 'A decision tree asks a series of yes/no questions, such as "is x<sub>1</sub> less than 0.3?". Each question <strong>splits</strong> a group of training points into two smaller groups. The tree picks the question that leaves the two groups as <strong>pure</strong> as possible, meaning as close as possible to all one colour, then repeats the process on each group.',
+    giniKey: 'Purity is measured with <strong>Gini impurity</strong>, G. Here p<sub>red</sub> and p<sub>blue</sub> are the shares of red and blue points in a group. G is 0 when the group is all one colour and 0.5 when it is half and half.',
+    gainKey: 'For every possible question the tree works out the <strong>impurity drop</strong>: the impurity of the group before the split, minus the impurity of the two new groups (each counted in proportion to its size, n<sub>yes</sub> and n<sub>no</sub> out of n). The question with the biggest drop wins.',
+    training: 'A group that is not split any further is called a <strong>leaf</strong>. To classify a new point, follow the questions down to a leaf: the probability of blue is the share of blue training points in that leaf. Each training step here is <strong>one split</strong>.',
+    diagram: 'The tree, growing one split at a time. Yes goes left and no goes right. Hover over a box, or focus the diagram and use the arrow keys, to light up its rectangle on the plot. Move the query point on the plot and its route through the tree is outlined here.',
+    diagramUntrained: 'Press Train to watch the tree grow, one question at a time.',
+    candidates: 'For the selected group, the best question the tree could find for each feature. It keeps the one with the bigger impurity drop.',
+    picture: 'The curve shows Gini impurity for every possible mix of colours: highest for an even mix, zero for a pure group. The ring marks the selected group, and the two dots are the groups its question creates. A good question moves the dots down the curve, towards the pure ends.',
+    threshold: 'A decision tree gives every point in a leaf the same probability, so only a handful of values ever occur. As the threshold moves, the boundary stays put and then jumps as whole leaves change colour, instead of gliding.',
+  },
+
+  forest: {
+    title: 'Random forest',
+    idea: 'A single decision tree is unreliable: change a few training points and it can grow quite differently. A random forest grows <strong>many trees</strong>, makes each one a little different on purpose, and averages their answers. The individual mistakes tend to cancel out.',
+    different: 'Two things make the trees differ. Each tree learns from its own <strong>bootstrap sample</strong>: a random sample of the training points, the same size as the original, drawn <strong>with replacement</strong>, so some points appear several times and about a third are left out. And at each split a tree may be allowed to look at only <strong>some of the features</strong>, chosen at random.',
+    formulaKey: 'Here T is the number of trees and p<sub>t</sub> is the probability of blue given by tree number t. Each tree is a decision tree, grown by choosing the questions that leave the purest groups. Each training step here grows <strong>one whole tree</strong>.',
+    oob: '<strong>Out-of-bag accuracy</strong> is a free test. Every training point was left out of some trees\' bootstrap samples, so it can be scored using only the trees that never saw it.',
+    oobOff: 'Out-of-bag accuracy needs bootstrap samples, so it is not available with bootstrap switched off.',
+    thumbnails: 'The first nine trees, each drawn on its own. Every one is different, and every one is rough. The main plot shows their average, which is smoother than any of them. The dot marks your query point.',
+    thumbnailsUntrained: 'Press Train to watch the trees appear, one at a time.',
+    curve: 'Accuracy on the test points as trees are added (with the threshold at 0.5). It climbs quickly, then levels off: beyond a certain point, extra trees stop helping.',
+    curveNoTest: 'There are no test points to measure accuracy on.',
+    picture: 'One dot for every tree, placed at the probability of blue it gives your query point. Where the dots pile up at one end, the trees agree. Where they are spread out, the forest is unsure. The solid line is their average: the forest\'s answer.',
+    threshold: 'A random forest averages many trees, so its probability moves in small steps (with 50 trees, steps of about 0.02). The boundary glides more smoothly than a single tree\'s, and more smoothly still with more trees.',
   },
 };
 
@@ -96,5 +138,19 @@ export const PARAM_NOTES = {
     degree: 'The degree decides which features the model is given. At 1 it sees only x<sub>1</sub> and x<sub>2</sub>, so its boundary has to be a straight line. From 2 upwards it also gets squares and products such as x<sub>1</sub><sup>2</sup> and x<sub>1</sub>x<sub>2</sub>, which let the boundary curve; a high degree on few points can bend around individual points, so watch training accuracy rise while test accuracy falls.',
     learningRate: 'The learning rate is the size of each nudge to the weights. A small value learns slowly and may run out of iterations before it settles. A large value learns quickly, and a very large one overshoots, so the loss curve jumps about instead of falling smoothly.',
     l2: 'Regularisation adds a penalty for large weights, which discourages the model from bending itself around individual points. Off means no penalty; larger values pull every weight towards zero, giving a smoother and more cautious boundary with paler shading. Too much and the model can barely learn at all.',
+  },
+  knn: {
+    k: 'k is how many neighbours get a vote. With k = 1 each point is given the colour of its single nearest neighbour, so the boundary is jagged and wraps around every stray point. Larger values smooth the boundary; very large values smooth away real detail as well.',
+    weighted: 'When this is on, a neighbour\'s vote counts for more the closer it is (each vote is worth 1 divided by its distance). It matters most when k is large: far-off neighbours still vote, but quietly. Look for the boundary hugging nearby points more tightly.',
+  },
+  tree: {
+    maxDepth: 'The maximum depth is how many questions in a row the tree may ask. A shallow tree can only draw a few large rectangles. A deep tree keeps cutting until it has boxed in individual points, so watch training accuracy climb towards 100% while test accuracy stalls or falls.',
+    minLeaf: 'This is the smallest number of training points a leaf may hold. At 1 the tree is free to make a leaf for a single odd point. Larger values forbid such tiny boxes, giving a simpler tree that ignores stray points.',
+  },
+  forest: {
+    trees: 'How many trees to grow. One tree alone is rough and unreliable; adding trees steadies the average. Watch the accuracy chart: it rises quickly and then flattens, after which more trees only cost time.',
+    maxDepth: 'How many questions in a row each tree may ask. Deep trees each fit their own sample closely, mistakes included, and the forest relies on averaging to cancel those mistakes out. Shallow trees are simpler but may all miss the same detail.',
+    bootstrap: 'When this is on, each tree learns from its own random sample of the training points, drawn with replacement. When it is off, every tree sees exactly the same points, so the trees can only differ through the features they are allowed to look at.',
+    featuresPerSplit: 'How many of the two features a tree may look at when choosing each question. With 1, each split is made on a feature picked at random, which makes the trees more different from one another; that difference is what makes averaging work. With 2, every tree always takes the best split, so the trees look more alike.',
   },
 };

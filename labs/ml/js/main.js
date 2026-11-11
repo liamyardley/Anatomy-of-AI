@@ -14,9 +14,11 @@ import {
 } from './metrics.js';
 import { createPlot } from './plot.js';
 import { createEngine } from './engine.js';
-import { MODELS, COMING_SOON } from './registry.js';
+import { MODELS } from './registry.js';
 import { fmt, pct, setValue, prefersReducedMotion } from './format.js';
-import { DATASET_NOTES, COPY, TRAIN_COPY, PARAM_NOTES } from '../content/notes.js';
+import {
+  DATASET_NOTES, COPY, TRAIN_COPY, PARAM_NOTES, MODEL_NOTES,
+} from '../content/notes.js';
 
 const $ = (id) => document.getElementById(id);
 const els = {
@@ -67,6 +69,7 @@ const state = {
   threshold: 0.5,
   speed: 'normal',
   matrixSet: 'test',     // which points the confusion matrix counts
+  panelOverlay: [],      // extra shapes the maths panel wants on the plot
 };
 
 for (const [key, spec] of Object.entries(MODELS)) {
@@ -74,6 +77,9 @@ for (const [key, spec] of Object.entries(MODELS)) {
 }
 
 const spec = () => MODELS[state.modelKey];
+// A new, untrained model with the current settings. Every model is also given
+// the lab's seed, so one that needs randomness stays reproducible.
+const createModel = () => spec().create({ ...state.params[state.modelKey], seed: state.seed });
 const isCustom = () => state.type === 'custom' || state.type === 'edited';
 const noiseMultiplier = () => state.noise * 2;
 const className = (y) => (y === 1 ? 'blue' : 'red');
@@ -196,7 +202,9 @@ const engine = createEngine({
   // Called after each tick of training steps.
   onProgress(snapshot) {
     state.snapshot = snapshot;
-    plot.setModel(state.model, spec().animationGrid);
+    // Some models fill in their predictions gradually and say how far they
+    // have got with snapshot.reveal (0 to 1).
+    plot.setModel(state.model, spec().animationGrid, snapshot.reveal ?? 1);
     updatePanel();
     updateTrainUI();
   },
@@ -215,6 +223,19 @@ const engine = createEngine({
 
 const trainingPoints = () => state.points.filter((p) => !p.test);
 
+// The training and test points as plain arrays, for the maths panels.
+let dataCache = null;
+function splitData() {
+  if (!dataCache) {
+    const collect = (wantTest) => {
+      const chosen = state.points.filter((p) => p.test === wantTest);
+      return { X: chosen.map((p) => [p.x1, p.x2]), y: chosen.map((p) => p.y) };
+    };
+    dataCache = { train: collect(false), test: collect(true) };
+  }
+  return dataCache;
+}
+
 // Start training from scratch. Returns false if there is nothing to train on.
 function startTraining({ paused = false } = {}) {
   const training = trainingPoints();
@@ -223,7 +244,7 @@ function startTraining({ paused = false } = {}) {
     announce(TRAIN_COPY.noData);
     return false;
   }
-  state.model = spec().create(state.params[state.modelKey]);
+  state.model = createModel();
   const trainer = state.model.train(
     training.map((p) => [p.x1, p.x2]),
     training.map((p) => p.y),
@@ -233,7 +254,7 @@ function startTraining({ paused = false } = {}) {
   state.snapshot = null;
   state.scores = null;
   plot.update({ stale: false });
-  plot.setModel(state.model, spec().animationGrid);
+  plot.setModel(state.model, spec().animationGrid, 0);
   engine.start(trainer, spec().speeds[state.speed], { paused });
   updatePanel();
   updateTrainUI();
@@ -245,6 +266,7 @@ function startTraining({ paused = false } = {}) {
 // out of date: stop any training, fade it, and wait for Train.
 function invalidate() {
   engine.cancel();
+  dataCache = null;
   if (state.model) {
     state.stale = true;
     state.phase = 'done';
@@ -280,10 +302,14 @@ function updatePanel(flash = true) {
   if (!panel) return;
   const point = state.query ? [state.query.x1, state.query.x2] : null;
   // Before any training, show a fresh model so the panel has its starting numbers.
-  const model = state.model || spec().create(state.params[state.modelKey]);
-  panel.update(model.explain(point), {
-    threshold: state.threshold, status: panelStatus(), flash,
+  const model = state.model || createModel();
+  const info = model.explain(point);
+  panel.update(info, {
+    threshold: state.threshold, status: panelStatus(), flash, data: splitData(),
   });
+  // A model may ask for extra drawings on the plot (neighbour lines, split
+  // lines and so on), and so may its panel.
+  plot.update({ overlay: [...(info.overlay || []), ...state.panelOverlay] });
 }
 
 function updateTrainUI() {
@@ -339,14 +365,21 @@ function buildParamControls() {
     const id = `param-${def.key}`;
     const stops = def.values;
     const format = def.format || String;
+    const toggle = def.type === 'toggle';
     const wrap = document.createElement('div');
     wrap.className = 'param';
-    wrap.innerHTML = `
-      <div class="field">
-        <label for="${id}">${def.label} <output for="${id}"></output></label>
-        <input id="${id}" type="range"
-          min="${stops ? 0 : def.min}" max="${stops ? stops.length - 1 : def.max}" step="${stops ? 1 : def.step}">
-      </div>
+    const control = toggle
+      ? `<label class="switch" for="${id}">
+           <span class="switch-label">${def.label}</span>
+           <input id="${id}" type="checkbox" role="switch">
+           <output for="${id}"></output>
+         </label>`
+      : `<div class="field">
+           <label for="${id}">${def.label} <output for="${id}"></output></label>
+           <input id="${id}" type="range"
+             min="${stops ? 0 : def.min}" max="${stops ? stops.length - 1 : def.max}" step="${stops ? 1 : def.step}">
+         </div>`;
+    wrap.innerHTML = `${control}
       <details class="explain">
         <summary>What does this do?</summary>
         <p>${PARAM_NOTES[state.modelKey][def.key]}</p>
@@ -355,12 +388,14 @@ function buildParamControls() {
     const output = wrap.querySelector('output');
     const show = (value) => {
       output.textContent = format(value);
-      input.setAttribute('aria-valuetext', format(value));
+      if (!toggle) input.setAttribute('aria-valuetext', format(value));
     };
-    input.value = stops ? stops.indexOf(values[def.key]) : values[def.key];
+    if (toggle) input.checked = values[def.key];
+    else input.value = stops ? stops.indexOf(values[def.key]) : values[def.key];
     show(values[def.key]);
-    input.addEventListener('input', () => {
-      values[def.key] = stops ? stops[Number(input.value)] : Number(input.value);
+    input.addEventListener(toggle ? 'change' : 'input', () => {
+      if (toggle) values[def.key] = input.checked;
+      else values[def.key] = stops ? stops[Number(input.value)] : Number(input.value);
       show(values[def.key]);
       invalidate(); // changing a setting never refits: it waits for Train
     });
@@ -386,9 +421,23 @@ function selectModel(key) {
   state.scores = null;
   plot.update({ stale: false });
   plot.setModel(null);
-  panel = spec().createPanel({
+  state.panelOverlay = [];
+  // The old panel is about to be removed from the page; make sure nothing it
+  // does on the way out (losing focus, for example) reaches the new model.
+  panel = null;
+  const created = spec().createPanel({
     intro: els.modelIntro, detail: els.modelDetail, wide: els.modelWide,
+    // Lets the panel highlight part of the plot, for example the rectangle
+    // belonging to the tree node under the mouse.
+    setOverlay(shapes) {
+      if (panel !== created) return;
+      state.panelOverlay = shapes;
+      updatePanel(false);
+    },
   });
+  panel = created;
+  $('thresholdNote').textContent = [TRAIN_COPY.threshold, MODEL_NOTES[key].threshold]
+    .filter(Boolean).join(' ');
   buildParamControls();
   updatePanel();
   updateTrainUI();
@@ -396,11 +445,6 @@ function selectModel(key) {
 }
 
 for (const [key, model] of Object.entries(MODELS)) els.model.add(new Option(model.label, key));
-for (const label of COMING_SOON) {
-  const option = new Option(`${label} (coming soon)`, '');
-  option.disabled = true;
-  els.model.add(option);
-}
 els.model.addEventListener('change', () => selectModel(els.model.value));
 
 // ===== The plot =====
@@ -563,7 +607,6 @@ for (const radio of document.querySelectorAll('input[name="matrixSet"]')) {
 
 // ===== Start =====
 
-$('thresholdNote').textContent = TRAIN_COPY.threshold;
 $('accuracyWarning').textContent = TRAIN_COPY.accuracyWarning;
 $('experimentNote').textContent = TRAIN_COPY.experiment;
 showThreshold();

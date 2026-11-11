@@ -98,9 +98,13 @@ const GENERATORS = {
   checker: {
     label: 'Checkerboard',
     settings(rng) {
+      // The crossing point is always off-centre, so the four blocks differ in
+      // size. With four equal blocks no single cut makes either side purer,
+      // which leaves a decision tree with nothing to go on for its first split.
+      const offCentre = () => (rng.bool() ? 1 : -1) * rng.uniform(0.18, 0.4);
       return {
-        cx: rng.uniform(-0.15, 0.15),
-        cy: rng.uniform(-0.15, 0.15),
+        cx: offCentre(),
+        cy: offCentre(),
         flip: rng.pick([0, 1]),
       };
     },

@@ -8,14 +8,28 @@
 //   create(params) builds a new, untrained model
 //   createPanel    builds the model's part of the maths panel
 //   params         the settings shown as controls; `values` gives a slider
-//                  fixed stops, otherwise min, max and step are used
+//                  fixed stops, `type: 'toggle'` gives an on/off switch,
+//                  otherwise min, max and step are used
 //   speeds         training steps per tick, and milliseconds between ticks
 //   animationGrid  resolution of the shaded regions while training animates
 //   progress(s)    one line describing a training snapshot
 //   finished(s)    one line describing the finished model
+//
+// Every model is created with its settings plus `seed`, the lab's current
+// seed, so that a model which needs randomness can stay reproducible.
 
 import { createLogistic } from './models/logistic.js';
 import { createLogisticPanel } from './panels/logistic.js';
+import { createKnn } from './models/knn.js';
+import { createKnnPanel } from './panels/knn.js';
+import { createTree } from './models/tree.js';
+import { createTreePanel } from './panels/tree.js';
+import { createForest } from './models/forest.js';
+import { createForestPanel } from './panels/forest.js';
+
+const onOff = (value) => (value ? 'on' : 'off');
+const plural = (count, one, many = `${one}s`) => `${count} ${count === 1 ? one : many}`;
+const ODD_K = Array.from({ length: 16 }, (_, i) => 2 * i + 1); // 1, 3, 5 ... 31
 
 export const MODELS = {
   logistic: {
@@ -42,7 +56,64 @@ export const MODELS = {
       ? `Stopped at the limit of ${s.maxIterations} iterations (loss ${s.loss.toFixed(3)}).`
       : `Finished: the loss stopped improving after ${s.iteration} iterations (loss ${s.loss.toFixed(3)}).`),
   },
-};
 
-// Shown in the picker, greyed out, until they are built.
-export const COMING_SOON = ['k-nearest neighbours', 'Decision tree', 'Random forest'];
+  knn: {
+    label: 'k-nearest neighbours',
+    create: createKnn,
+    createPanel: createKnnPanel,
+    params: [
+      { key: 'k', label: 'Neighbours (k)', values: ODD_K, initial: 5 },
+      { key: 'weighted', label: 'Distance weighting', type: 'toggle', initial: false, format: onOff },
+    ],
+    speeds: {
+      slow: { steps: 1, interval: 160 },
+      normal: { steps: 1, interval: 50 },
+      fast: { steps: 3, interval: 0 },
+    },
+    animationGrid: 60,
+    progress: (s) => (s.phase === 'memorise'
+      ? `Storing the training points: ${s.stored} of ${s.total} copied into memory`
+      : `Predicting: asking the neighbours, ${Math.round(s.reveal * 100)}% of the plot filled in`),
+    finished: (s) => `Finished: ${plural(s.total, 'point')} stored. Nothing was learned; every prediction is worked out by asking the neighbours.`,
+  },
+
+  tree: {
+    label: 'Decision tree',
+    create: createTree,
+    createPanel: createTreePanel,
+    params: [
+      { key: 'maxDepth', label: 'Maximum depth', min: 1, max: 10, step: 1, initial: 3 },
+      { key: 'minLeaf', label: 'Minimum samples per leaf', min: 1, max: 20, step: 1, initial: 1 },
+    ],
+    speeds: {
+      slow: { steps: 1, interval: 1000 },
+      normal: { steps: 1, interval: 400 },
+      fast: { steps: 1, interval: 60 },
+    },
+    animationGrid: 120,
+    progress: (s) => `Training: ${plural(s.splits, 'split')} made, ${plural(s.leaves, 'leaf', 'leaves')}`,
+    finished: (s) => (s.splits === 0
+      ? 'Finished: no split made the groups any purer, so the tree is a single leaf.'
+      : `Finished: ${plural(s.splits, 'split')}, ${s.leaves} leaves, ${plural(s.depth, 'question')} deep.`),
+  },
+
+  forest: {
+    label: 'Random forest',
+    create: createForest,
+    createPanel: createForestPanel,
+    params: [
+      { key: 'trees', label: 'Number of trees', min: 1, max: 200, step: 1, initial: 50 },
+      { key: 'maxDepth', label: 'Maximum depth', min: 1, max: 10, step: 1, initial: 6 },
+      { key: 'bootstrap', label: 'Bootstrap samples', type: 'toggle', initial: true, format: onOff },
+      { key: 'featuresPerSplit', label: 'Features considered per split', min: 1, max: 2, step: 1, initial: 1 },
+    ],
+    speeds: {
+      slow: { steps: 1, interval: 500 },
+      normal: { steps: 1, interval: 80 },
+      fast: { steps: 5, interval: 0 },
+    },
+    animationGrid: 60,
+    progress: (s) => `Training: ${s.trees} of ${plural(s.total, 'tree')} grown`,
+    finished: (s) => `Finished: ${plural(s.trees, 'tree')} grown and averaged.`,
+  },
+};

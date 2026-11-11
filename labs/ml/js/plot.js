@@ -1,6 +1,14 @@
 // The canvas plot: shaded decision regions, the boundary line, the points,
 // the query point, and mouse, touch and keyboard input.
 //
+// A model can also ask for extra drawings on top (an "overlay"): a list of
+// simple shapes in data coordinates, so the plot never needs to know what
+// they mean.
+//   { kind: 'segment', from: [x1, x2], to: [x1, x2], style: 'link' or 'split' }
+//   { kind: 'circle', centre: [x1, x2], radius }
+//   { kind: 'box', x1: [low, high], x2: [low, high], style: 'focus' or 'leaf' }
+//   { kind: 'rings', points: [[x1, x2], ...] }
+//
 // It knows nothing about datasets or particular models. main.js tells it
 // what to draw, hands it any object with a predictProba([x1, x2]) method to
 // shade the regions, and receives callbacks when the user does something.
@@ -18,6 +26,7 @@ export function createPlot(canvas, handlers) {
     points: [], showTest: false, query: null, mode: 'explore',
     threshold: 0.5,        // where the boundary line is drawn
     stale: false,          // fade the regions: they no longer match the settings
+    overlay: [],           // extra shapes asked for by the model (see the top of this file)
   };
   let keyboardActive = false;
   let press = null;        // the touch or click currently in progress
@@ -122,7 +131,9 @@ export function createPlot(canvas, handlers) {
     const cell = span() / fieldSize;
     ctx.save();
     ctx.beginPath();
-    ctx.rect(PAD, PAD, span(), span());
+    // Only the rows the model has reached so far are shown.
+    const shown = field.rows > fieldSize ? span() : Math.max(0, (field.rows - 0.5) * cell);
+    ctx.rect(PAD, PAD, span(), shown);
     ctx.clip();
     ctx.globalAlpha = view.stale ? 0.3 : 1;
     ctx.imageSmoothingEnabled = true;
@@ -237,6 +248,68 @@ export function createPlot(canvas, handlers) {
     ctx.fill();
   }
 
+  // The model's extra shapes. Boxes and split lines go under the points;
+  // links, circles and rings go over them.
+  function drawOverlay(c, over) {
+    if (view.overlay.length === 0) return;
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(PAD, PAD, span(), span());
+    ctx.clip();
+    const fade = view.stale ? 0.3 : 1;
+    for (const item of view.overlay) {
+      const onTop = item.kind === 'circle' || item.kind === 'rings'
+        || (item.kind === 'segment' && item.style === 'link');
+      if (onTop !== over) continue;
+      ctx.globalAlpha = fade;
+      ctx.strokeStyle = c.ink;
+      ctx.setLineDash([]);
+      if (item.kind === 'segment') {
+        const [ax, ay] = toPx(item.from[0], item.from[1]);
+        const [bx, by] = toPx(item.to[0], item.to[1]);
+        if (item.style === 'split') {
+          ctx.globalAlpha = fade * 0.75;
+          ctx.setLineDash([5, 4]);
+        }
+        ctx.lineWidth = 1.4;
+        ctx.beginPath();
+        ctx.moveTo(ax, ay);
+        ctx.lineTo(bx, by);
+        ctx.stroke();
+      } else if (item.kind === 'circle') {
+        const [px, py] = toPx(item.centre[0], item.centre[1]);
+        ctx.setLineDash([6, 4]);
+        ctx.lineWidth = 1.6;
+        ctx.beginPath();
+        ctx.arc(px, py, (item.radius / 2) * span(), 0, Math.PI * 2);
+        ctx.stroke();
+      } else if (item.kind === 'box') {
+        const [left, top] = toPx(item.x1[0], item.x2[1]);
+        const [right, bottom] = toPx(item.x1[1], item.x2[0]);
+        if (item.style === 'focus') {
+          ctx.globalAlpha = fade * 0.16;
+          ctx.fillStyle = c.ink;
+          ctx.fillRect(left, top, right - left, bottom - top);
+          ctx.globalAlpha = fade;
+          ctx.lineWidth = 2.5;
+        } else {
+          ctx.setLineDash([2, 3]);
+          ctx.lineWidth = 2;
+        }
+        ctx.strokeRect(left + 1, top + 1, right - left - 2, bottom - top - 2);
+      } else if (item.kind === 'rings') {
+        ctx.lineWidth = 1.6;
+        for (const point of item.points) {
+          const [px, py] = toPx(point[0], point[1]);
+          ctx.beginPath();
+          ctx.arc(px, py, POINT_RADIUS + 4, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+      }
+    }
+    ctx.restore();
+  }
+
   function draw() {
     if (size === 0) return;
     const dpr = window.devicePixelRatio || 1;
@@ -246,9 +319,11 @@ export function createPlot(canvas, handlers) {
     ctx.fillRect(0, 0, size, size);
     if (field) drawRegions(c);
     drawGrid(c);
+    drawOverlay(c, false);
     // Training points on top of test points, so the solid ones stay readable.
     if (view.showTest) for (const p of view.points) if (p.test) drawPoint(p, c);
     for (const p of view.points) if (!p.test) drawPoint(p, c);
+    drawOverlay(c, true);
     if (view.query) drawQuery(view.query, c);
   }
 
@@ -347,7 +422,8 @@ export function createPlot(canvas, handlers) {
   let fieldVersion = 0;
 
   return {
-    // Change what is shown: any of { points, showTest, query, mode, threshold, stale }.
+    // Change what is shown: any of
+    // { points, showTest, query, mode, threshold, stale, overlay }.
     // Moving the threshold only moves the boundary line; the shading is untouched.
     update(next) {
       view = { ...view, ...next };
@@ -355,21 +431,24 @@ export function createPlot(canvas, handlers) {
     },
 
     // Shade the plot with a model's probabilities, sampled on a grid of
-    // gridSize x gridSize cells. Pass null to remove the shading.
-    setModel(model, gridSize = 120) {
+    // gridSize x gridSize cells. Pass null to remove the shading. `reveal`
+    // (0 to 1) shades only that share of the plot, from the top down, for
+    // models whose predictions fill in gradually.
+    setModel(model, gridSize = 120, reveal = 1) {
       if (!model) {
         field = null;
       } else {
         const row = gridSize + 1;
-        const values = new Float32Array(row * row);
-        for (let j = 0; j < row; j++) {
+        const values = new Float32Array(row * row).fill(0.5);
+        const rows = reveal >= 1 ? row : Math.floor(Math.max(0, reveal) * row);
+        for (let j = 0; j < rows; j++) {
           const x2 = 1 - (2 * j) / gridSize;
           for (let i = 0; i < row; i++) {
             values[j * row + i] = model.predictProba([-1 + (2 * i) / gridSize, x2]);
           }
         }
         fieldSize = gridSize;
-        field = { values, version: ++fieldVersion };
+        field = { values, rows, version: ++fieldVersion };
       }
       draw();
     },
