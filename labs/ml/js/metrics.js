@@ -31,3 +31,34 @@ export function countPoints(points) {
   }
   return counts;
 }
+
+// --- measuring a trained model ---
+//
+// Blue is the positive class. A point is predicted blue when its probability
+// of blue is at least the decision threshold.
+
+// Count the four outcomes: tp (blue, predicted blue), fn (blue, predicted
+// red), fp (red, predicted blue) and tn (red, predicted red).
+export function confusion(probabilities, labels, threshold) {
+  const counts = { tp: 0, fn: 0, fp: 0, tn: 0 };
+  for (let i = 0; i < labels.length; i++) {
+    const predictedBlue = probabilities[i] >= threshold;
+    if (labels[i] === 1) counts[predictedBlue ? 'tp' : 'fn']++;
+    else counts[predictedBlue ? 'fp' : 'tn']++;
+  }
+  return counts;
+}
+
+// Accuracy: share of all points predicted correctly.
+// Sensitivity: share of blue points correctly caught.
+// Specificity: share of red points correctly left alone.
+// A value is null when there is nothing to measure it on.
+export function summarise({ tp, fn, fp, tn }) {
+  const n = tp + fn + fp + tn;
+  return {
+    n,
+    accuracy: n ? (tp + tn) / n : null,
+    sensitivity: tp + fn ? tp / (tp + fn) : null,
+    specificity: tn + fp ? tn / (tn + fp) : null,
+  };
+}

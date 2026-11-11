@@ -3,10 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="A hands-on lab for machine learning: explore datasets of red and blue points and see how a model learns to tell them apart.">
+<meta name="description" content="A hands-on lab for machine learning: pick a dataset of red and blue points, train a model, and watch it learn to tell them apart with the mathematics shown alongside.">
 <title>Machine Learning Lab | Anatomy of AI</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Karla:ital,wght@0,400;0,600;0,700;1,400&display=swap">
+<!-- KaTeX draws the formulas. If it cannot load, they are shown as plain text. -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" crossorigin="anonymous">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js" crossorigin="anonymous"></script>
 <link rel="stylesheet" href="../../assets/css/theme.css">
 <link rel="stylesheet" href="css/lab.css">
 </head>
@@ -20,7 +23,7 @@
   <div class="intro">
     <h1>Machine Learning Lab</h1>
     <p class="lede">Machine learning means showing a computer lots of examples and letting it work out the rule for itself. Here the examples are <strong>red and blue points</strong>, and the rule to find is where red ends and blue begins.</p>
-    <p class="lede">Start by getting to know the data. Try each pattern, make new variations, add points of your own, and ask yourself: where would you draw the line?</p>
+    <p class="lede">Pick a dataset, choose a model's settings, press <strong>Train</strong> and watch it learn. Then change something and train again: the quickest way to understand a setting is to see what it does.</p>
   </div>
 
   <!-- Shown until the scripts load. They cannot load when the page is opened
@@ -31,7 +34,7 @@
     <!-- The plot comes first in the page so it is first on small screens;
          on wide screens the stylesheet places it on the right. -->
     <section class="plot-col" aria-labelledby="plotHeading">
-      <h2 id="plotHeading" class="visually-hidden">The data</h2>
+      <h2 id="plotHeading" class="visually-hidden">The data and the model's predictions</h2>
 
       <div class="card controls">
         <div class="control-grid">
@@ -41,12 +44,7 @@
           </div>
           <div class="field">
             <label for="modelSel">Model</label>
-            <select id="modelSel" disabled aria-describedby="modelHint">
-              <option>Logistic regression</option>
-              <option>k-nearest neighbours</option>
-              <option>Decision tree</option>
-              <option>Random forest</option>
-            </select>
+            <select id="modelSel"></select>
           </div>
           <div class="field field-seed">
             <label for="seedInput">Seed</label>
@@ -55,7 +53,7 @@
         </div>
 
         <div class="button-row">
-          <button type="button" id="regenBtn" class="btn primary">Regenerate</button>
+          <button type="button" id="regenBtn" class="btn">Regenerate</button>
           <button type="button" id="moreBtn" class="btn">Add more points</button>
           <button type="button" id="revealBtn" class="btn" hidden>Reveal</button>
         </div>
@@ -71,7 +69,6 @@
           </div>
         </div>
 
-        <p class="small-print" id="modelHint">The models arrive in the next stage of this lab. For now, explore the data they will learn from.</p>
         <details class="explain">
           <summary>What is a seed?</summary>
           <p>The datasets are random, but a computer's randomness starts from a number called a seed. The same seed always produces exactly the same dataset, so a whole class can type in the same seed and see the same points. <strong>Regenerate</strong> picks a new seed for you.</p>
@@ -81,8 +78,32 @@
       <div class="card plot-card">
         <div class="plot-frame">
           <canvas id="plot" tabindex="0" role="application"
-            aria-label="Plot of the dataset. Arrow keys move the query point. In Edit points mode, Enter adds a point, Shift and Enter adds the other colour, and Delete removes the nearest point."></canvas>
+            aria-label="Plot of the dataset and the model's predictions. Arrow keys move the query point. In Edit points mode, Enter adds a point, Shift and Enter adds the other colour, and Delete removes the nearest point."></canvas>
         </div>
+
+        <!-- Training controls -->
+        <div class="train-bar" role="group" aria-label="Training">
+          <button type="button" id="trainBtn" class="btn primary">Train</button>
+          <button type="button" id="pauseBtn" class="btn" disabled>Pause</button>
+          <button type="button" id="stepBtn" class="btn">Step</button>
+          <button type="button" id="skipBtn" class="btn" disabled>Skip</button>
+          <fieldset class="segmented speed">
+            <legend class="visually-hidden">Training speed</legend>
+            <label><input type="radio" name="speed" value="slow"><span>Slow</span></label>
+            <label><input type="radio" name="speed" value="normal" checked><span>Normal</span></label>
+            <label><input type="radio" name="speed" value="fast"><span>Fast</span></label>
+          </fieldset>
+        </div>
+        <p class="train-message" id="trainMessage"></p>
+
+        <!-- Decision threshold -->
+        <div class="field threshold">
+          <label for="thresholdRange">Decision threshold <output id="thresholdOut" for="thresholdRange"></output></label>
+          <input id="thresholdRange" type="range" min="0.05" max="0.95" step="0.01" value="0.5">
+        </div>
+        <p class="small-print" id="thresholdNote"></p>
+
+        <hr class="rule">
 
         <div class="plot-tools">
           <fieldset class="segmented">
@@ -98,23 +119,46 @@
           </fieldset>
 
           <button type="button" id="clearBtn" class="btn small" hidden>Clear</button>
-
         </div>
 
         <p class="small-print" id="modeHint"></p>
         <p class="status" id="status" aria-live="polite"></p>
       </div>
       <p class="visually-hidden" id="announce" aria-live="polite"></p>
-    </section>
 
-    <section class="maths-col" aria-labelledby="mathsHeading">
-      <h2 id="mathsHeading" class="visually-hidden">About the data</h2>
+      <!-- How well the trained model does -->
+      <div class="card" id="metricsCard">
+        <p class="crumb">The score</p>
+        <h3 class="card-title">How well did the model do?</h3>
+        <table class="data-table metric-table fitted">
+          <thead>
+            <tr><td></td><th scope="col" class="num">Training points</th><th scope="col" class="num">Test points</th></tr>
+          </thead>
+          <tbody>
+            <tr><th scope="row">Accuracy <small>share of all points predicted correctly</small></th><td class="num" id="accTrain"></td><td class="num" id="accTest"></td></tr>
+            <tr><th scope="row">Sensitivity <small>share of blue points correctly caught</small></th><td class="num" id="sensTrain"></td><td class="num" id="sensTest"></td></tr>
+            <tr><th scope="row">Specificity <small>share of red points correctly left alone</small></th><td class="num" id="specTrain"></td><td class="num" id="specTest"></td></tr>
+          </tbody>
+        </table>
 
-      <div class="card">
-        <p class="crumb">The dataset</p>
-        <h3 class="card-title" id="datasetTitle"></h3>
-        <p class="blurb" id="datasetText"></p>
-        <p class="note" id="revealNote" hidden></p>
+        <div class="matrix-head">
+          <p class="crumb sub" id="matrixLabel">Confusion matrix</p>
+          <fieldset class="segmented">
+            <legend class="visually-hidden">Which points the confusion matrix counts</legend>
+            <label><input type="radio" name="matrixSet" value="test" checked><span>Test points</span></label>
+            <label><input type="radio" name="matrixSet" value="train"><span>Training points</span></label>
+          </fieldset>
+        </div>
+        <table class="data-table matrix fitted" aria-labelledby="matrixLabel">
+          <thead>
+            <tr><td></td><th scope="col" class="num">Predicted blue</th><th scope="col" class="num">Predicted red</th></tr>
+          </thead>
+          <tbody>
+            <tr><th scope="row">Actually blue</th><td class="num good" id="cmTP"></td><td class="num bad" id="cmFN"></td></tr>
+            <tr><th scope="row">Actually red</th><td class="num bad" id="cmFP"></td><td class="num good" id="cmTN"></td></tr>
+          </tbody>
+        </table>
+        <p class="small-print">A <strong>confusion matrix</strong> counts each kind of right and wrong answer. <span id="accuracyWarning"></span></p>
       </div>
 
       <div class="card">
@@ -138,20 +182,36 @@
           </li>
         </ul>
         <label class="check"><input type="checkbox" id="showTest"><span>Show test points</span></label>
+        <ul class="legend spaced">
+          <li>
+            <span class="swatch" aria-hidden="true"></span>
+            <span><strong>Shading is the model's opinion.</strong> Once a model is trained, the plot is shaded red where it thinks a point would be red and blue where it thinks blue. Strong colour means it is confident; pale means it is unsure. The dark line is the <strong>boundary</strong>, where its prediction switches.</span>
+          </li>
+        </ul>
       </div>
+    </section>
+
+    <section class="maths-col" id="mathsCol" aria-labelledby="mathsHeading">
+      <h2 id="mathsHeading" class="visually-hidden">The mathematics</h2>
 
       <div class="card">
-        <p class="crumb">Query point</p>
-        <h3 class="card-title">Pick a spot to ask about</h3>
-        <p class="blurb">Hover over the plot, or tap it, to drop a <strong>query point</strong>: a place where you would like to know "red or blue?". Once the models arrive, this panel will show the full calculation for that exact spot.</p>
-        <p class="readout" id="queryReadout"></p>
+        <p class="crumb">The dataset</p>
+        <h3 class="card-title" id="datasetTitle"></h3>
+        <p class="blurb" id="datasetText"></p>
+        <p class="note" id="revealNote" hidden></p>
       </div>
 
-      <div class="card coming">
-        <p class="crumb">Coming next</p>
-        <h3 class="card-title">Four ways to draw the line</h3>
-        <p class="blurb">Soon you will be able to train four different models on this data and watch each one learn, with its mathematics shown here as it runs: logistic regression, k-nearest neighbours, a decision tree and a random forest.</p>
+      <div id="modelIntro"></div>
+
+      <div class="card">
+        <p class="crumb">Settings</p>
+        <h3 class="card-title">Change the model</h3>
+        <p class="blurb" id="experimentNote"></p>
+        <div id="paramControls" class="params"></div>
+        <label class="check"><input type="checkbox" id="showAll"><span>Show all explanations</span></label>
       </div>
+
+      <div id="modelDetail"></div>
     </section>
   </div>
 </main>

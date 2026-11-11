@@ -1,30 +1,46 @@
-// Wiring for the Machine Learning Lab: page state, controls and the plot.
-// Models and the training engine plug in here in the next phase.
+// Wiring for the Machine Learning Lab: page state, controls, the training
+// loop and the plot.
+//
+// This file never mentions a particular model. It works through the list in
+// registry.js and the common model interface, so a new model needs no
+// changes here.
 
 import { createRng } from './rng.js';
 import {
   DATASET_TYPES, DEFAULT_POINT_COUNT, createDataset, buildPoints, morePoints, kindLabel,
 } from './datasets.js';
-import { DEFAULT_TRAIN_SHARE, drawIsTest, countPoints } from './metrics.js';
+import {
+  DEFAULT_TRAIN_SHARE, drawIsTest, countPoints, confusion, summarise,
+} from './metrics.js';
 import { createPlot } from './plot.js';
-import { DATASET_NOTES, COPY } from '../content/notes.js';
+import { createEngine } from './engine.js';
+import { MODELS, COMING_SOON } from './registry.js';
+import { fmt, pct, setValue, prefersReducedMotion } from './format.js';
+import { DATASET_NOTES, COPY, TRAIN_COPY, PARAM_NOTES } from '../content/notes.js';
 
 const $ = (id) => document.getElementById(id);
 const els = {
-  dataset: $('datasetSel'), seed: $('seedInput'),
+  dataset: $('datasetSel'), model: $('modelSel'), seed: $('seedInput'),
   regen: $('regenBtn'), more: $('moreBtn'), reveal: $('revealBtn'),
   noise: $('noiseRange'), noiseOut: $('noiseOut'),
   count: $('countRange'), countOut: $('countOut'),
   classToggle: $('classToggle'), clear: $('clearBtn'), showTest: $('showTest'),
   modeHint: $('modeHint'), status: $('status'), announce: $('announce'),
   datasetTitle: $('datasetTitle'), datasetText: $('datasetText'), revealNote: $('revealNote'),
-  queryReadout: $('queryReadout'),
+  train: $('trainBtn'), pause: $('pauseBtn'), step: $('stepBtn'), skip: $('skipBtn'),
+  trainMessage: $('trainMessage'),
+  threshold: $('thresholdRange'), thresholdOut: $('thresholdOut'),
+  metricsCard: $('metricsCard'), mathsCol: $('mathsCol'),
+  modelIntro: $('modelIntro'), modelDetail: $('modelDetail'),
+  params: $('paramControls'), showAll: $('showAll'),
 };
 
 const MAX_SEED = 999999;
 const REMOVE_REACH = 0.2; // how close a point must be to be removed
+const FULL_GRID = 120;    // resolution of the shaded regions once training has finished
 
 const state = {
+  // --- data ---
   type: 'clouds',        // a dataset key, or 'edited' for a premade set changed by hand
   seed: 42,
   dataset: null,         // { type, kind, seed, settings } from datasets.js
@@ -39,20 +55,34 @@ const state = {
   batch: 0,              // how many times "Add more points" has been pressed
   revealed: false,       // Mystery only
   manualRng: null,       // decides train or test for points added by hand
+
+  // --- model ---
+  modelKey: Object.keys(MODELS)[0],
+  params: {},            // per model: { settingKey: value }
+  model: null,           // the model on show: training, trained, or out of date
+  phase: 'untrained',    // 'untrained', 'training' or 'done'
+  stale: false,          // the model on show no longer matches the settings or data
+  snapshot: null,        // the latest training snapshot
+  scores: null,          // probabilities for every point, captured when training finished
+  threshold: 0.5,
+  speed: 'normal',
+  matrixSet: 'test',     // which points the confusion matrix counts
 };
 
+for (const [key, spec] of Object.entries(MODELS)) {
+  state.params[key] = Object.fromEntries(spec.params.map((p) => [p.key, p.initial]));
+}
+
+const spec = () => MODELS[state.modelKey];
 const isCustom = () => state.type === 'custom' || state.type === 'edited';
 const noiseMultiplier = () => state.noise * 2;
-
-// Two decimal places, with a proper minus sign.
-const fmt = (v) => (Math.abs(v) < 0.005 ? 0 : v).toFixed(2).replace('-', '−');
 const className = (y) => (y === 1 ? 'blue' : 'red');
 
 function announce(message) {
   els.announce.textContent = message;
 }
 
-// --- building datasets ---
+// ===== Data =====
 
 // Start a fresh dataset of the current type from the current seed.
 function rebuild() {
@@ -61,6 +91,7 @@ function rebuild() {
   state.batch = 0;
   state.revealed = false;
   state.manualRng = createRng(state.seed, 'manual');
+  invalidate();
   render();
 }
 
@@ -83,8 +114,6 @@ function syncDatasetPicker() {
   els.dataset.value = state.type;
 }
 
-// --- editing by hand ---
-
 function addPoint(where, otherClass) {
   markEdited();
   const y = otherClass ? 1 - state.activeClass : state.activeClass;
@@ -92,6 +121,7 @@ function addPoint(where, otherClass) {
   state.points.push({ x1: where.x1, x2: where.x2, y, test });
   const hiddenNote = test && !state.showTest ? ' It is hidden: tick "Show test points" to see it.' : '';
   announce(`Added a ${className(y)} ${test ? 'test' : 'training'} point at ${fmt(where.x1)}, ${fmt(where.x2)}.${hiddenNote}`);
+  invalidate();
   render();
 }
 
@@ -111,11 +141,11 @@ function removeNearest(where) {
   markEdited();
   const [removed] = state.points.splice(best, 1);
   announce(`Removed a ${className(removed.y)} point.`);
+  invalidate();
   render();
 }
 
-// --- rendering ---
-
+// Everything about the data and its controls.
 function render() {
   const custom = isCustom();
   const counts = countPoints(state.points);
@@ -124,7 +154,6 @@ function render() {
     points: state.points, showTest: state.showTest, query: state.query, mode: state.mode,
   });
 
-  // Controls
   syncDatasetPicker();
   els.seed.value = state.seed;
   els.noiseOut.textContent = state.noise === 0 ? 'none' : `${Math.round(state.noise * 200)}%`;
@@ -143,12 +172,10 @@ function render() {
     ? 'Click or tap to add a point. Shift-click adds the other colour. Right-click or long-press removes the nearest point.'
     : 'Hover or tap to move the query point. Switch to Edit points to add or remove points.';
 
-  // Status line
   els.status.textContent = counts.total === 0
     ? COPY.customEmpty
     : `${counts.total} points: ${counts.train} training, ${counts.test} test${state.showTest ? '' : ' (hidden)'}. ${counts.red} red, ${counts.blue} blue.`;
 
-  // Dataset card
   const note = DATASET_NOTES[state.type];
   els.datasetTitle.textContent = note.title;
   els.datasetText.textContent = note.text;
@@ -156,30 +183,241 @@ function render() {
   if (!els.revealNote.hidden) {
     els.revealNote.textContent = COPY.mysteryRevealed(kindLabel(state.dataset));
   }
-
-  renderQuery();
 }
 
-function renderQuery() {
-  els.queryReadout.innerHTML = state.query
-    ? `Query point: x<sub>1</sub> = ${fmt(state.query.x1)}, x<sub>2</sub> = ${fmt(state.query.x2)}`
-    : COPY.queryEmpty;
+// ===== Training =====
+//
+// Nothing is ever fitted automatically. The flow is always: set the
+// parameters, press Train, watch the model learn.
+
+let panel = null; // the current model's part of the maths panel
+
+const engine = createEngine({
+  // Called after each tick of training steps.
+  onProgress(snapshot) {
+    state.snapshot = snapshot;
+    plot.setModel(state.model, spec().animationGrid);
+    updatePanel();
+    updateTrainUI();
+  },
+  // Called once, when training is complete.
+  onFinish(snapshot) {
+    state.snapshot = snapshot;
+    state.phase = 'done';
+    plot.setModel(state.model, FULL_GRID);
+    captureScores();
+    updatePanel();
+    updateTrainUI();
+    updateMetrics();
+    announce(spec().finished(snapshot));
+  },
+});
+
+const trainingPoints = () => state.points.filter((p) => !p.test);
+
+// Start training from scratch. Returns false if there is nothing to train on.
+function startTraining({ paused = false } = {}) {
+  const training = trainingPoints();
+  if (training.length === 0) {
+    els.trainMessage.textContent = TRAIN_COPY.noData;
+    announce(TRAIN_COPY.noData);
+    return false;
+  }
+  state.model = spec().create(state.params[state.modelKey]);
+  const trainer = state.model.train(
+    training.map((p) => [p.x1, p.x2]),
+    training.map((p) => p.y),
+  );
+  state.phase = 'training';
+  state.stale = false;
+  state.snapshot = null;
+  state.scores = null;
+  plot.update({ stale: false });
+  plot.setModel(state.model, spec().animationGrid);
+  engine.start(trainer, spec().speeds[state.speed], { paused });
+  updatePanel();
+  updateTrainUI();
+  updateMetrics();
+  return true;
 }
 
-// --- the plot ---
+// Called whenever the data or a setting changes. The model on show is now
+// out of date: stop any training, fade it, and wait for Train.
+function invalidate() {
+  engine.cancel();
+  if (state.model) {
+    state.stale = true;
+    state.phase = 'done';
+  }
+  plot.update({ stale: state.stale });
+  updatePanel();
+  updateTrainUI();
+  updateMetrics();
+}
+
+// Remember every point's probability, so that moving the threshold can
+// update the scores instantly without asking the model again.
+function captureScores() {
+  const collect = (wantTest) => {
+    const chosen = state.points.filter((p) => p.test === wantTest);
+    return {
+      probabilities: chosen.map((p) => state.model.predictProba([p.x1, p.x2])),
+      labels: chosen.map((p) => p.y),
+    };
+  };
+  state.scores = { train: collect(false), test: collect(true) };
+}
+
+const panelStatus = () => {
+  if (!state.model) return 'untrained';
+  if (state.stale) return 'stale';
+  return state.phase === 'training' ? 'training' : 'done';
+};
+
+// `flash` is false when only the query point moved, so that hovering does
+// not make every number blink.
+function updatePanel(flash = true) {
+  if (!panel) return;
+  const point = state.query ? [state.query.x1, state.query.x2] : null;
+  // Before any training, show a fresh model so the panel has its starting numbers.
+  const model = state.model || spec().create(state.params[state.modelKey]);
+  panel.update(model.explain(point), {
+    threshold: state.threshold, status: panelStatus(), flash,
+  });
+}
+
+function updateTrainUI() {
+  const status = panelStatus();
+  els.pause.disabled = !engine.active;
+  els.pause.textContent = engine.active && !engine.running ? 'Resume' : 'Pause';
+  els.step.disabled = engine.running;
+  els.skip.disabled = !engine.active;
+
+  let message = TRAIN_COPY.untrained;
+  if (status === 'stale') message = TRAIN_COPY.stale;
+  else if (status === 'training') {
+    message = state.snapshot ? spec().progress(state.snapshot) : 'Training: ready for the first step';
+    if (!engine.running) message += ' (paused)';
+  } else if (status === 'done') message = spec().finished(state.snapshot);
+  els.trainMessage.textContent = message;
+  els.trainMessage.dataset.status = status;
+  els.mathsCol.dataset.status = status;
+  els.metricsCard.dataset.status = status;
+}
+
+// The scores under the plot. They are shown only once training has finished,
+// and they follow the threshold instantly.
+function updateMetrics() {
+  const cells = {
+    train: [$('accTrain'), $('sensTrain'), $('specTrain')],
+    test: [$('accTest'), $('sensTest'), $('specTest')],
+  };
+  const matrix = [$('cmTP'), $('cmFN'), $('cmFP'), $('cmTN')];
+  if (!state.scores) {
+    const blank = state.phase === 'training' ? '...' : '';
+    for (const cell of [...cells.train, ...cells.test, ...matrix]) cell.textContent = blank;
+    return;
+  }
+  for (const set of ['train', 'test']) {
+    const counts = confusion(state.scores[set].probabilities, state.scores[set].labels, state.threshold);
+    const summary = summarise(counts);
+    setValue(cells[set][0], pct(summary.accuracy));
+    setValue(cells[set][1], pct(summary.sensitivity));
+    setValue(cells[set][2], pct(summary.specificity));
+    if (set === state.matrixSet) {
+      [counts.tp, counts.fn, counts.fp, counts.tn].forEach((n, i) => setValue(matrix[i], String(n)));
+    }
+  }
+}
+
+// ===== Model picker and settings =====
+
+// Build the controls for the current model's settings. Each has a hidden
+// "What does this do?" explanation, so people can experiment first.
+function buildParamControls() {
+  els.params.innerHTML = '';
+  const values = state.params[state.modelKey];
+  for (const def of spec().params) {
+    const id = `param-${def.key}`;
+    const stops = def.values;
+    const format = def.format || String;
+    const wrap = document.createElement('div');
+    wrap.className = 'param';
+    wrap.innerHTML = `
+      <div class="field">
+        <label for="${id}">${def.label} <output for="${id}"></output></label>
+        <input id="${id}" type="range"
+          min="${stops ? 0 : def.min}" max="${stops ? stops.length - 1 : def.max}" step="${stops ? 1 : def.step}">
+      </div>
+      <details class="explain">
+        <summary>What does this do?</summary>
+        <p>${PARAM_NOTES[state.modelKey][def.key]}</p>
+      </details>`;
+    const input = wrap.querySelector('input');
+    const output = wrap.querySelector('output');
+    const show = (value) => {
+      output.textContent = format(value);
+      input.setAttribute('aria-valuetext', format(value));
+    };
+    input.value = stops ? stops.indexOf(values[def.key]) : values[def.key];
+    show(values[def.key]);
+    input.addEventListener('input', () => {
+      values[def.key] = stops ? stops[Number(input.value)] : Number(input.value);
+      show(values[def.key]);
+      invalidate(); // changing a setting never refits: it waits for Train
+    });
+    els.params.append(wrap);
+  }
+  applyShowAll();
+}
+
+function applyShowAll() {
+  for (const details of document.querySelectorAll('details.explain')) {
+    details.open = els.showAll.checked;
+  }
+}
+els.showAll.addEventListener('change', applyShowAll);
+
+function selectModel(key) {
+  engine.cancel();
+  state.modelKey = key;
+  state.model = null;
+  state.phase = 'untrained';
+  state.stale = false;
+  state.snapshot = null;
+  state.scores = null;
+  plot.update({ stale: false });
+  plot.setModel(null);
+  panel = spec().createPanel({ intro: els.modelIntro, detail: els.modelDetail });
+  buildParamControls();
+  updatePanel();
+  updateTrainUI();
+  updateMetrics();
+}
+
+for (const [key, model] of Object.entries(MODELS)) els.model.add(new Option(model.label, key));
+for (const label of COMING_SOON) {
+  const option = new Option(`${label} (coming soon)`, '');
+  option.disabled = true;
+  els.model.add(option);
+}
+els.model.addEventListener('change', () => selectModel(els.model.value));
+
+// ===== The plot =====
 
 const plot = createPlot($('plot'), {
   onQuery(where) {
     state.query = where;
     plot.update({ query: where });
-    renderQuery();
+    updatePanel(false);
   },
   onAdd: addPoint,
   onRemove: removeNearest,
 });
 
-// --- controls ---
+// ===== Controls =====
 
+// --- data ---
 for (const { key, label } of DATASET_TYPES) els.dataset.add(new Option(label, key));
 
 els.dataset.addEventListener('change', () => {
@@ -222,6 +460,7 @@ els.more.addEventListener('click', () => {
   state.batch += 1;
   state.points.push(...added);
   announce(`Added ${added.length} more points.`);
+  invalidate();
   render();
 });
 
@@ -263,6 +502,7 @@ els.clear.addEventListener('click', () => {
   markEdited();
   state.points = [];
   announce('Cleared all points.');
+  invalidate();
   render();
 });
 
@@ -271,13 +511,69 @@ els.showTest.addEventListener('change', () => {
   render();
 });
 
-// --- start ---
+// --- training ---
+els.train.addEventListener('click', () => {
+  if (!startTraining()) return;
+  announce('Training started.');
+  // With reduced motion, skip the animation and show the finished model.
+  if (prefersReducedMotion()) engine.skip();
+});
+
+els.pause.addEventListener('click', () => {
+  if (engine.running) engine.pause(); else engine.resume();
+  updateTrainUI();
+});
+
+els.step.addEventListener('click', () => {
+  // Step also works from a standing start: it begins training, paused.
+  if (!engine.active && !startTraining({ paused: true })) return;
+  engine.stepOnce();
+  updateTrainUI();
+});
+
+els.skip.addEventListener('click', () => engine.skip());
+
+for (const radio of document.querySelectorAll('input[name="speed"]')) {
+  radio.addEventListener('change', () => {
+    state.speed = radio.value;
+    engine.setSpeed(spec().speeds[state.speed]);
+  });
+}
+
+// --- decision threshold ---
+// Moving it never retrains: the shading stays put, and only the boundary
+// line, the predictions and the scores move.
+function showThreshold() {
+  els.thresholdOut.textContent = state.threshold.toFixed(2);
+}
+els.threshold.addEventListener('input', () => {
+  state.threshold = Number(els.threshold.value);
+  showThreshold();
+  plot.update({ threshold: state.threshold });
+  updatePanel();
+  updateMetrics();
+});
+
+for (const radio of document.querySelectorAll('input[name="matrixSet"]')) {
+  radio.addEventListener('change', () => {
+    state.matrixSet = radio.value;
+    updateMetrics();
+  });
+}
+
+// ===== Start =====
+
+$('thresholdNote').textContent = TRAIN_COPY.threshold;
+$('accuracyWarning').textContent = TRAIN_COPY.accuracyWarning;
+$('experimentNote').textContent = TRAIN_COPY.experiment;
+showThreshold();
 
 // Optional address-bar settings, for example ?data=moons&seed=42.
-const params = new URLSearchParams(location.search);
-if (DATASET_TYPES.some((t) => t.key === params.get('data'))) state.type = params.get('data');
-if (/^\d{1,6}$/.test(params.get('seed') || '')) state.seed = Number(params.get('seed'));
+const query = new URLSearchParams(location.search);
+if (DATASET_TYPES.some((t) => t.key === query.get('data'))) state.type = query.get('data');
+if (/^\d{1,6}$/.test(query.get('seed') || '')) state.seed = Number(query.get('seed'));
 if (state.type === 'custom') setMode('edit');
 
 $('loadNotice').remove(); // the scripts loaded, so the server note is not needed
+selectModel(state.modelKey);
 rebuild();
