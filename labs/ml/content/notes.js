@@ -1,9 +1,9 @@
 // Editable copy for the Machine Learning Lab.
 //
 // Everything a visitor reads that is likely to be reworded lives here, so
-// the wording can change without touching the code. Parameter explanations,
-// the predict-observe-explain activities and the field notes join this file
-// in later phases.
+// the wording can change without touching the code: dataset descriptions,
+// model and setting explanations, the predict-observe-explain activities
+// and the field notes.
 //
 // House style: plain English, UK spelling, no em dashes.
 
@@ -68,6 +68,80 @@ export const TRAIN_COPY = {
   threshold: 'Blue counts as the positive class: a point is predicted blue when its probability of blue is at least the threshold. Moving the threshold does not retrain the model. The shading, which shows the model\'s probabilities, stays exactly the same; only the boundary line and the predictions move.',
   accuracyWarning: 'Accuracy alone can mislead. On data that is 60% blue, a model that calls every point blue scores 60% while never getting a single red point right. The confusion matrix shows which kind of mistake is being made.',
   experiment: 'Try changing a setting and training again. Can you work out what it does before you reveal the explanation?',
+  roc: 'Moving the threshold trades one kind of mistake for another. The <strong>ROC curve</strong> (short for receiver operating characteristic, a name left over from radar engineering) shows that trade for every possible threshold at once. Each point on the curve is one threshold: how many blue points it catches, plotted against how many red points it wrongly calls blue. The <strong>dot is the current threshold</strong>, so it slides along the curve as you move the slider. A curve that hugs the top-left corner belongs to a model that tells the colours apart well; the dashed diagonal is what guessing would give. The <strong>area under the curve</strong> (AUC) sums it up in one number: 1 is perfect and 0.5 is guessing.',
+  rocEmpty: 'Train a model to draw its ROC curve.',
+  rocOneClass: 'An ROC curve needs both red and blue points, and these points are all one colour.',
+};
+
+// --- comparing the models ---
+
+export const COMPARE_COPY = {
+  empty: 'Press Train all to fill in the table. Nothing is animated, so it takes a moment at most.',
+  done: 'All models trained on the current dataset.',
+  stale: 'The data or a setting has changed: press Train all to update the table.',
+  noData: 'There are no training points yet. Add some points first.',
+  note: 'Accuracy is measured at the current decision threshold and follows the slider. Training time is how long your browser took, without animation; k-nearest neighbours looks quickest because it only stores the points and does its real work later, each time it predicts. Select a model\'s name to switch to it.',
+};
+
+// --- predict, observe, explain ---
+// One activity per dataset. `explain` is hidden until the visitor asks for it.
+
+export const ACTIVITY_COPY = {
+  question: 'Which model do you think will do best on the test points here, and what will its boundary look like?',
+  questionMystery: 'Here is an unknown dataset. Study the points: which model will win?',
+  notRun: 'Nothing trained yet.',
+  stale: 'The data or a setting has changed since the models were trained. Train them again.',
+  mysteryHidden: 'Press Reveal (beside Regenerate) to find out what this dataset was. The explanation will then appear here.',
+};
+
+export const ACTIVITY_NOTES = {
+  clouds: 'Logistic regression usually comes first or equal first. The two clouds sit either side of one straight, slanting line, and a straight line is exactly what logistic regression draws. k-nearest neighbours and the random forest come close, but they bend around stray points in the overlap. The decision tree has the hardest time: it can only cut straight across or straight down, so it has to copy a slanting line with a staircase. Nobody reaches 100%, because the clouds overlap.',
+  ring: 'With a feature degree of 1, logistic regression fails completely: no straight line can separate a disc from the ring around it. k-nearest neighbours and the random forest cope well, because they work locally instead of drawing one line. A shallow decision tree manages only a boxy approximation of the circle. Now set the feature degree to 2 and train logistic regression again. Given the squares of the features it can draw a circle, and it becomes one of the best, with the smoothest boundary of all. A "linear" model can draw curves once it is given the right features.',
+  checker: 'Expect a near tie between the decision tree, the random forest and k-nearest neighbours. What sets the tree apart is how little it needs: the true boundaries run straight across and straight down, which are the only cuts a tree can make, so two questions are enough. Set its maximum depth to 2 and see. Logistic regression with a feature degree of 1 fails, since no single straight line separates opposite corners. Try a degree of 2 and watch what the x<sub>1</sub>x<sub>2</sub> term does.',
+  moons: 'k-nearest neighbours usually wins. The crescents are curved, and each point\'s colour is best judged from the points right beside it, which is all k-nearest neighbours ever does. The random forest is close behind. The decision tree builds a staircase around the curves. Logistic regression with a feature degree of 1 draws one straight line through both moons; raising the degree to 3 lets it bend, and it improves.',
+  islands: 'Expect a near tie, with nobody much above 90%. About one label in ten is wrong on purpose, and the wrong labels are wrong in the test points too, so that is a ceiling no model can break. The interesting part is who falls below it. Set the decision tree\'s maximum depth to 10 and train it: it chases the wrong labels, drawing small boxes around single points, so its training accuracy soars while its test accuracy drops. The random forest also grows fairly deep trees, yet it holds up, because averaging many trees smooths those mistakes away. A simple model such as logistic regression often does as well as anything here, precisely because it cannot chase single points.',
+  spiral: 'k-nearest neighbours copes far better than the rest, because it only needs nearby points to agree with each other. A deep tree or a large forest gets partway, with a blocky imitation of the arms. Logistic regression cannot follow them at any feature degree on offer. Now make it harder: lower the number of points, or raise the noise, and watch k-nearest neighbours start to struggle too. A pattern like this really needs a model that can build its own features out of many small pieces, which is what a neural network does: the subject of the next lab.',
+  noise: 'A trick question: no model can beat a coin toss here. The colours were decided at random, so every model scores about 50% on the test points. Now look at the training accuracy. k-nearest neighbours with k = 1, or a decision tree with a large maximum depth, scores 100% on the training points while learning nothing at all. That gap between training and test accuracy is called <strong>overfitting</strong>, and this is its plainest form.',
+  blobs: 'This one was a handful of random blobs of each colour. k-nearest neighbours and the random forest usually do best, because blobs are local clumps and both models judge a point by what is near it. Logistic regression only does well if the blobs happen to fall either side of a single line.',
+};
+
+// --- field notes ---
+// Short lessons from real project work, shown beside each model.
+// Each is { title, text }.
+
+export const FIELD_NOTES = {
+  logistic: [
+    {
+      title: 'Look past the accuracy figure',
+      text: 'In a project predicting stock market moves from headline sentiment, a logistic model reported respectable accuracy while predicting "up" for every single day. Only the confusion matrix revealed it.',
+    },
+    {
+      title: 'More features, more overfitting',
+      text: 'Fitting every squared and interaction term at once overfitted badly. Trimming terms back one at a time gave a model that held up on new data.',
+    },
+  ],
+  knn: [
+    {
+      title: 'The choice of "closeness" matters as much as k',
+      text: 'On text, k-nearest neighbours using cosine similarity (which compares the direction of two sets of numbers, not their size) beat the same method using straight-line distance by a wide margin.',
+    },
+  ],
+  tree: [
+    {
+      title: 'Easy to explain, quick to change its mind',
+      text: 'A single tree was the easiest model to explain to anyone, and the least stable: small changes to the data produced a noticeably different tree.',
+    },
+  ],
+  forest: [
+    {
+      title: 'More trees is not the lever',
+      text: 'Bagging (training each tree on its own bootstrap sample) and random forests cut the test error of a single tree substantially. But growing a forest from 100 to 5,000 trees did not reliably improve accuracy; tree depth, and how similar the trees are to each other, mattered more.',
+    },
+  ],
+  general: {
+    title: 'Test performance is the score that counts',
+    text: 'When several models were compared on the same training data, the most flexible one won on the training data and was the least stable on the test data.',
+  },
 };
 
 // --- the models ---

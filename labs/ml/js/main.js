@@ -10,19 +10,22 @@ import {
   DATASET_TYPES, DEFAULT_POINT_COUNT, createDataset, buildPoints, morePoints, kindLabel,
 } from './datasets.js';
 import {
-  DEFAULT_TRAIN_SHARE, drawIsTest, countPoints, confusion, summarise,
+  DEFAULT_TRAIN_SHARE, drawIsTest, countPoints, confusion, summarise, rocCurve,
 } from './metrics.js';
+import { rocChart } from './charts.js';
+import { trainAll, describeSettings } from './compare.js';
 import { createPlot } from './plot.js';
 import { createEngine } from './engine.js';
 import { MODELS } from './registry.js';
 import { fmt, pct, setValue, prefersReducedMotion } from './format.js';
 import {
   DATASET_NOTES, COPY, TRAIN_COPY, PARAM_NOTES, MODEL_NOTES,
+  COMPARE_COPY, ACTIVITY_COPY, ACTIVITY_NOTES, FIELD_NOTES,
 } from '../content/notes.js';
 
 const $ = (id) => document.getElementById(id);
 const els = {
-  dataset: $('datasetSel'), model: $('modelSel'), seed: $('seedInput'),
+  dataset: $('datasetSel'), model: $('modelSel'), modelQuick: $('modelQuick'), seed: $('seedInput'),
   regen: $('regenBtn'), more: $('moreBtn'), reveal: $('revealBtn'),
   noise: $('noiseRange'), noiseOut: $('noiseOut'),
   count: $('countRange'), countOut: $('countOut'),
@@ -70,6 +73,12 @@ const state = {
   speed: 'normal',
   matrixSet: 'test',     // which points the confusion matrix counts
   panelOverlay: [],      // extra shapes the maths panel wants on the plot
+
+  // --- comparison and activity ---
+  compare: null,         // the last "Train all" results, one entry per model
+  compareStale: false,   // the data or a setting has changed since then
+  prediction: null,      // the model the visitor predicted would win
+  activityFor: '',       // which dataset the prediction belongs to
 };
 
 for (const [key, spec] of Object.entries(MODELS)) {
@@ -189,6 +198,7 @@ function render() {
   if (!els.revealNote.hidden) {
     els.revealNote.textContent = COPY.mysteryRevealed(kindLabel(state.dataset));
   }
+  updateActivity();
 }
 
 // ===== Training =====
@@ -275,6 +285,8 @@ function invalidate() {
   updatePanel();
   updateTrainUI();
   updateMetrics();
+  if (state.compare) state.compareStale = true;
+  updateCompare();
 }
 
 // Remember every point's probability, so that moving the threshold can
@@ -341,6 +353,7 @@ function updateMetrics() {
   if (!state.scores) {
     const blank = state.phase === 'training' ? '...' : '';
     for (const cell of [...cells.train, ...cells.test, ...matrix]) cell.textContent = blank;
+    updateRoc();
     return;
   }
   for (const set of ['train', 'test']) {
@@ -352,6 +365,145 @@ function updateMetrics() {
       [counts.tp, counts.fn, counts.fp, counts.tn].forEach((n, i) => setValue(matrix[i], String(n)));
     }
   }
+  updateRoc();
+}
+
+// The ROC curve shows every threshold at once; the dot is the current one,
+// so it slides along the curve as the threshold slider moves.
+function updateRoc() {
+  const chart = $('rocChart');
+  const note = $('rocSet');
+  const set = state.scores ? state.scores[state.matrixSet] : null;
+  const roc = set ? rocCurve(set.probabilities, set.labels) : { points: [], auc: null };
+  if (roc.points.length === 0) {
+    chart.innerHTML = rocChart([], null, null);
+    note.textContent = set ? TRAIN_COPY.rocOneClass : TRAIN_COPY.rocEmpty;
+    return;
+  }
+  const { tp, fn, fp, tn } = confusion(set.probabilities, set.labels, state.threshold);
+  chart.innerHTML = rocChart(roc.points, { fpr: fp / (fp + tn), tpr: tp / (tp + fn) }, roc.auc);
+  note.textContent = `Drawn from the ${state.matrixSet === 'test' ? 'test' : 'training'} points. `
+    + 'The switch above the confusion matrix changes which points are used.';
+}
+
+// ===== Comparing the models =====
+
+const accuracyOf = (set) => summarise(confusion(set.probabilities, set.labels, state.threshold)).accuracy;
+const formatTime = (ms) => {
+  if (ms < 1) return 'under 1 ms';
+  return `${ms < 10 ? ms.toFixed(1) : Math.round(ms)} ms`;
+};
+
+// Train every model on the current data, without animation.
+function runCompare() {
+  const data = splitData();
+  if (data.train.X.length === 0) {
+    $('compareMessage').textContent = COMPARE_COPY.noData;
+    return;
+  }
+  state.compare = trainAll(MODELS, state.params, state.seed, data);
+  state.compareStale = false;
+  updateCompare();
+  announce(COMPARE_COPY.done);
+}
+
+// The test accuracy of every model in the last comparison, and the best of them.
+function compareSummary() {
+  const rows = state.compare.map((row) => ({
+    ...row, train: accuracyOf(row.scores.train), test: accuracyOf(row.scores.test),
+  }));
+  const tested = rows.filter((row) => row.test !== null);
+  const best = tested.length ? Math.max(...tested.map((row) => row.test)) : null;
+  return { rows, best };
+}
+
+function updateCompare() {
+  const summary = state.compare ? compareSummary() : null;
+  const message = $('compareMessage');
+  message.textContent = !summary ? COMPARE_COPY.empty
+    : (state.compareStale ? COMPARE_COPY.stale : COMPARE_COPY.done);
+  message.dataset.status = state.compareStale ? 'stale' : '';
+  const body = $('compareRows');
+  body.classList.toggle('stale', state.compareStale);
+  body.innerHTML = Object.entries(MODELS).map(([key, model]) => {
+    const row = summary ? summary.rows.find((r) => r.key === key) : null;
+    const current = key === state.modelKey;
+    const best = row && row.test !== null && row.test === summary.best;
+    return `<tr class="${current ? 'current' : ''}">
+      <th scope="row"><button type="button" class="link" data-model="${key}"${current ? ' aria-current="true"' : ''}>${model.label}</button>${current ? '<small>on show above</small>' : ''}</th>
+      <td class="settings">${row ? row.settings : describeSettings(model, state.params[key])}</td>
+      <td class="num result">${row ? pct(row.train) : ''}</td>
+      <td class="num result">${row ? pct(row.test) : ''}${best ? ' <span class="badge">best</span>' : ''}</td>
+      <td class="num result">${row ? formatTime(row.ms) : ''}</td>
+    </tr>`;
+  }).join('');
+  updateActivity();
+}
+
+$('trainAllBtn').addEventListener('click', runCompare);
+
+// Selecting a model's name in the table switches the lab to that model.
+$('compareRows').addEventListener('click', (event) => {
+  const button = event.target.closest('button[data-model]');
+  if (!button) return;
+  selectModel(button.dataset.model);
+  document.querySelector('.lab').scrollIntoView({
+    behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'start',
+  });
+  els.model.focus({ preventScroll: true });
+});
+
+// ===== Predict, observe, explain =====
+
+const fieldNote = (note) => `<aside class="field-note" aria-label="Field note">
+  <p class="crumb">Field note, from MSc coursework</p>
+  <p class="field-note-title">${note.title}</p>
+  <p>${note.text}</p>
+</aside>`;
+
+$('activityChoices').insertAdjacentHTML('beforeend', Object.entries(MODELS).map(([key, model]) => `
+  <label class="check"><input type="radio" name="prediction" value="${key}"><span>${model.label}</span></label>`).join(''));
+for (const radio of document.querySelectorAll('input[name="prediction"]')) {
+  radio.addEventListener('change', () => { state.prediction = radio.value; updateActivity(); });
+}
+$('activityRun').addEventListener('click', runCompare);
+
+function updateActivity() {
+  const panel = $('activity');
+  panel.hidden = isCustom(); // hand-made data has no prepared activity
+  if (panel.hidden) return;
+
+  // A new dataset starts the activity afresh.
+  const id = `${state.type}:${state.seed}`;
+  if (id !== state.activityFor) {
+    state.activityFor = id;
+    state.prediction = null;
+    for (const radio of document.querySelectorAll('input[name="prediction"]')) radio.checked = false;
+    $('activityReveal').open = false;
+  }
+
+  const mystery = state.type === 'mystery';
+  $('activityQuestion').textContent = mystery ? ACTIVITY_COPY.questionMystery : ACTIVITY_COPY.question;
+  $('activityExplain').innerHTML = mystery && !state.revealed
+    ? ACTIVITY_COPY.mysteryHidden
+    : ACTIVITY_NOTES[state.dataset.kind];
+
+  const result = $('activityResult');
+  let text = ACTIVITY_COPY.notRun;
+  if (state.compare && state.compareStale) text = ACTIVITY_COPY.stale;
+  else if (state.compare) {
+    const { rows, best } = compareSummary();
+    const winners = rows.filter((row) => row.test === best).map((row) => row.label);
+    text = `Test accuracy: ${rows.map((row) => `${row.label} ${pct(row.test)}`).join(', ')}. `
+      + `Best: ${winners.join(' and ')}.`;
+    if (state.prediction) {
+      const mine = MODELS[state.prediction].label;
+      text += winners.includes(mine)
+        ? ` You predicted ${mine}: a match.`
+        : ` You predicted ${mine}: not this time. Can you see why before you reveal the explanation?`;
+    }
+  }
+  if (result.textContent !== text) result.textContent = text;
 }
 
 // ===== Model picker and settings =====
@@ -414,6 +566,8 @@ els.showAll.addEventListener('change', applyShowAll);
 function selectModel(key) {
   engine.cancel();
   state.modelKey = key;
+  els.model.value = key;
+  els.modelQuick.value = key;
   state.model = null;
   state.phase = 'untrained';
   state.stale = false;
@@ -438,14 +592,20 @@ function selectModel(key) {
   panel = created;
   $('thresholdNote').textContent = [TRAIN_COPY.threshold, MODEL_NOTES[key].threshold]
     .filter(Boolean).join(' ');
+  $('fieldNotes').innerHTML = (FIELD_NOTES[key] || []).map(fieldNote).join('');
   buildParamControls();
   updatePanel();
   updateTrainUI();
   updateMetrics();
+  if (state.dataset) updateCompare(); // moves the "on show above" marker
 }
 
-for (const [key, model] of Object.entries(MODELS)) els.model.add(new Option(model.label, key));
-els.model.addEventListener('change', () => selectModel(els.model.value));
+// There are two model pickers: the main one in the model card, and a second
+// beside the plot for small screens. They always show the same model.
+for (const picker of [els.model, els.modelQuick]) {
+  for (const [key, model] of Object.entries(MODELS)) picker.add(new Option(model.label, key));
+  picker.addEventListener('change', () => selectModel(picker.value));
+}
 
 // ===== The plot =====
 
@@ -596,6 +756,7 @@ els.threshold.addEventListener('input', () => {
   plot.update({ threshold: state.threshold });
   updatePanel();
   updateMetrics();
+  updateCompare();
 });
 
 for (const radio of document.querySelectorAll('input[name="matrixSet"]')) {
@@ -609,6 +770,9 @@ for (const radio of document.querySelectorAll('input[name="matrixSet"]')) {
 
 $('accuracyWarning').textContent = TRAIN_COPY.accuracyWarning;
 $('experimentNote').textContent = TRAIN_COPY.experiment;
+$('rocNote').innerHTML = TRAIN_COPY.roc;
+$('compareNote').textContent = COMPARE_COPY.note;
+$('generalNote').innerHTML = fieldNote(FIELD_NOTES.general);
 showThreshold();
 
 // Optional address-bar settings, for example ?data=moons&seed=42.

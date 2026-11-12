@@ -14,6 +14,7 @@
 <link rel="stylesheet" href="css/lab.css">
 </head>
 <body>
+<a class="skip-link" href="#labMain">Skip to the lab</a>
 <header class="site-bar">
   <a class="home-link" href="../../index.html"><span aria-hidden="true">&larr;</span> Anatomy of AI</a>
   <span class="bar-title">Machine Learning Lab</span>
@@ -84,12 +85,45 @@
         <h3 class="card-title" id="datasetTitle"></h3>
         <p class="blurb" id="datasetText"></p>
         <p class="note" id="revealNote" hidden></p>
+
+        <!-- Predict, observe, explain: one short activity per dataset -->
+        <details class="activity" id="activity">
+          <summary>Activity: predict, observe, explain</summary>
+          <ol class="steps">
+            <li><strong>Predict.</strong> <span id="activityQuestion"></span>
+              <fieldset class="choices" id="activityChoices">
+                <legend class="visually-hidden">Your prediction</legend>
+              </fieldset>
+            </li>
+            <li><strong>Observe.</strong> Train each model yourself and watch what its boundary does, or let the lab train them all at once.
+              <div class="button-row"><button type="button" id="activityRun" class="btn small">Train all models</button></div>
+              <p class="activity-result" id="activityResult" aria-live="polite"></p>
+            </li>
+            <li><strong>Explain.</strong> Decide for yourself why the winner won and what the others got wrong. Then check.
+              <details class="reveal" id="activityReveal">
+                <summary>Reveal the explanation</summary>
+                <p id="activityExplain"></p>
+              </details>
+            </li>
+          </ol>
+        </details>
       </div>
 
       <div class="card plot-card">
         <div class="plot-frame">
           <canvas id="plot" tabindex="0" role="application"
             aria-label="Plot of the dataset and the model's predictions. Arrow keys move the query point. In Edit points mode, Enter adds a point, Shift and Enter adds the other colour, and Delete removes the nearest point."></canvas>
+        </div>
+
+        <!-- On small screens the model card is a long way below the plot, so
+             a second model picker sits here. The stylesheet hides it on wide
+             screens. -->
+        <div class="quick-model">
+          <div class="field">
+            <label for="modelQuick">Model</label>
+            <select id="modelQuick"></select>
+          </div>
+          <a href="#settings">Change its settings</a>
         </div>
 
         <!-- Training controls -->
@@ -179,9 +213,10 @@
           <select id="modelSel"></select>
         </div>
         <div id="modelIntro" class="model-intro"></div>
+        <div id="fieldNotes"></div>
 
         <hr class="rule">
-        <p class="crumb sub">Settings</p>
+        <p class="crumb sub" id="settings">Settings</p>
         <h3 class="card-title">Change the model</h3>
         <p class="blurb" id="experimentNote"></p>
         <div id="paramControls" class="params"></div>
@@ -245,9 +280,46 @@
             <tr><th scope="row">F1 score <small>one figure that balances precision and recall; it is high only when both are</small></th><td class="num" id="f1Train"></td><td class="num" id="f1Test"></td></tr>
           </tbody>
         </table>
+        <p class="small-print" id="accuracyWarning"></p>
       </div>
     </div>
-    <p class="small-print" id="accuracyWarning"></p>
+
+    <hr class="rule spaced">
+    <div class="split">
+      <div>
+        <h3 class="card-title" id="rocLabel">Every threshold at once: the ROC curve</h3>
+        <div class="chart roc fitted" id="rocChart"></div>
+      </div>
+      <div>
+        <p class="blurb roc-text" id="rocNote"></p>
+        <p class="small-print" id="rocSet"></p>
+      </div>
+    </div>
+    </div>
+  </section>
+
+  <!-- Block 4: every model side by side -->
+  <section class="card block wide-block" id="compareCard" aria-labelledby="compareHeading">
+    <header class="block-head">
+      <p class="crumb">Part 4</p>
+      <h2 class="block-title" id="compareHeading">Compare the models</h2>
+      <p class="block-sub">Train every model on the current dataset, each with the settings you last gave it, and see which copes best.</p>
+    </header>
+    <div class="block-body">
+      <div class="compare-bar">
+        <button type="button" id="trainAllBtn" class="btn primary">Train all</button>
+        <p class="train-message" id="compareMessage" aria-live="polite"></p>
+      </div>
+      <div class="table-scroll tall" tabindex="0" role="group" aria-label="Comparison of the models">
+        <table class="data-table compare-table">
+          <thead>
+            <tr><th scope="col">Model</th><th scope="col" class="settings">Its settings</th><th scope="col" class="num">Training accuracy</th><th scope="col" class="num">Test accuracy</th><th scope="col" class="num">Training time</th></tr>
+          </thead>
+          <tbody id="compareRows"></tbody>
+        </table>
+      </div>
+      <p class="small-print" id="compareNote"></p>
+      <div id="generalNote"></div>
     </div>
   </section>
 </main>

@@ -69,3 +69,32 @@ export function summarise({ tp, fn, fp, tn }) {
     f1: 2 * tp + fp + fn ? (2 * tp) / (2 * tp + fp + fn) : null,
   };
 }
+
+// The ROC curve: what every possible decision threshold would give.
+// Each point is one threshold, with
+//   fpr  the share of red points wrongly called blue (1 - specificity)
+//   tpr  the share of blue points correctly caught (sensitivity)
+// The curve runs from (0, 0), where nothing is called blue, to (1, 1), where
+// everything is. `auc` is the area under it: 1 is perfect, 0.5 is guessing.
+// Returns no points if either colour is missing.
+export function rocCurve(probabilities, labels) {
+  const blue = labels.reduce((sum, y) => sum + y, 0);
+  const red = labels.length - blue;
+  if (blue === 0 || red === 0) return { points: [], auc: null };
+  const order = labels.map((_, i) => i).sort((a, b) => probabilities[b] - probabilities[a]);
+  const points = [{ fpr: 0, tpr: 0, threshold: Infinity }];
+  let tp = 0;
+  let fp = 0;
+  let auc = 0;
+  order.forEach((i, position) => {
+    if (labels[i] === 1) tp += 1; else fp += 1;
+    // Points with the same probability change sides together.
+    const next = order[position + 1];
+    if (next !== undefined && probabilities[next] === probabilities[i]) return;
+    const point = { fpr: fp / red, tpr: tp / blue, threshold: probabilities[i] };
+    const last = points[points.length - 1];
+    auc += ((point.fpr - last.fpr) * (point.tpr + last.tpr)) / 2;
+    points.push(point);
+  });
+  return { points, auc };
+}

@@ -286,3 +286,62 @@ test('forest: out-of-bag accuracy, the accuracy curve and the votes add up', () 
   // Without bootstrap samples there is nothing out of the bag to score.
   assert.equal(fit(createForest({ trees: 3, bootstrap: false }), X, y).explain().oobAccuracy, null);
 });
+
+// ===== ROC curve and the model comparison =====
+
+import { rocCurve } from '../labs/ml/js/metrics.js';
+import { trainAll, describeSettings } from '../labs/ml/js/compare.js';
+
+test('ROC curve: perfect scores give area 1, reversed scores give 0, ties give 0.5', () => {
+  const labels = [1, 1, 0, 0];
+  const perfect = rocCurve([0.9, 0.8, 0.2, 0.1], labels);
+  assert.equal(perfect.auc, 1);
+  assert.deepEqual(perfect.points[0], { fpr: 0, tpr: 0, threshold: Infinity });
+  assert.deepEqual(perfect.points.at(-1), { fpr: 1, tpr: 1, threshold: 0.1 });
+  assert.equal(rocCurve([0.1, 0.2, 0.8, 0.9], labels).auc, 0);
+  assert.equal(rocCurve([0.5, 0.5, 0.5, 0.5], labels).auc, 0.5);
+  // With only one colour there is no curve to draw.
+  assert.deepEqual(rocCurve([0.5, 0.6], [1, 1]), { points: [], auc: null });
+});
+
+test('ROC curve: every threshold lands on the curve', () => {
+  const { X, y } = lab('islands');
+  const model = fit(createKnn({ k: 5 }), X, y);
+  const probabilities = X.map((x) => model.predictProba(x));
+  const { points } = rocCurve(probabilities, y);
+  for (const threshold of [0.05, 0.3, 0.5, 0.7, 0.95]) {
+    const { tp, fn, fp, tn } = confusion(probabilities, y, threshold);
+    const at = { fpr: fp / (fp + tn), tpr: tp / (tp + fn) };
+    assert.ok(points.some((p) => p.fpr === at.fpr && p.tpr === at.tpr));
+  }
+});
+
+test('Train all: one row per model, trained with its own settings', () => {
+  const points = buildPoints(createDataset('moons', 5), 200, 1, 0.7);
+  const data = { train: split(points.filter((p) => !p.test)), test: split(points.filter((p) => p.test)) };
+  // A cut-down stand-in for registry.js (which also loads the page's panels).
+  const models = {
+    knn: { label: 'k-NN', create: createKnn, params: [{ key: 'k', label: 'Neighbours' }] },
+    tree: { label: 'Tree', create: createTree, params: [{ key: 'maxDepth', label: 'Maximum depth' }] },
+    forest: {
+      label: 'Forest', create: createForest,
+      params: [{ key: 'trees', label: 'Trees' }, { key: 'bootstrap', label: 'Bootstrap', format: (v) => (v ? 'on' : 'off') }],
+    },
+  };
+  const params = { knn: { k: 1 }, tree: { maxDepth: 2 }, forest: { trees: 5, bootstrap: true } };
+  let clock = 0;
+  const rows = trainAll(models, params, 11, data, () => (clock += 2));
+  assert.deepEqual(rows.map((r) => r.key), ['knn', 'tree', 'forest']);
+  assert.equal(describeSettings(models.forest, params.forest), 'Trees 5, Bootstrap on');
+  for (const row of rows) {
+    assert.equal(row.ms, 2);
+    assert.equal(row.scores.train.probabilities.length, data.train.y.length);
+    assert.equal(row.scores.test.probabilities.length, data.test.y.length);
+  }
+  // k = 1 remembers its own training points perfectly.
+  const knn = rows[0].scores.train;
+  assert.equal(summarise(confusion(knn.probabilities, knn.labels, 0.5)).accuracy, 1);
+  // The forest row matches a forest trained directly with the same seed.
+  const direct = fit(createForest({ trees: 5, bootstrap: true, seed: 11 }), data.train.X, data.train.y);
+  assert.deepEqual(rows[2].scores.test.probabilities, data.test.X.map((x) => direct.predictProba(x)));
+});
