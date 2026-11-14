@@ -197,6 +197,11 @@ export const MODEL_NOTES = {
     title: 'Decision tree',
     idea: 'A decision tree asks a series of yes/no questions, such as "is x<sub>1</sub> less than 0.3?". Each question <strong>splits</strong> a group of training points into two smaller groups. The tree picks the question that leaves the two groups as <strong>pure</strong> as possible, meaning as close as possible to all one colour, then repeats the process on each group.',
     giniKey: 'Purity is measured with <strong>Gini impurity</strong>, G. Here p<sub>red</sub> and p<sub>blue</sub> are the shares of red and blue points in a group. G is 0 when the group is all one colour and 0.5 when it is half and half.',
+    // The sentence above the formula, saying which impurity measure is in
+    // use. The name becomes a link to the setting.
+    criterionNames: { gini: 'Gini impurity', entropy: 'entropy' },
+    usingDefault: (link) => `This model is measuring purity with ${link}, the usual choice. Its formula is:`,
+    usingChosen: (link) => `You have chosen to measure purity with ${link}. Its formula is:`,
     entropyKey: 'Purity is measured here with <strong>entropy</strong>, written G to match the formula below. Here p<sub>red</sub> and p<sub>blue</sub> are the shares of red and blue points in a group, and log<sub>2</sub> is the logarithm to base 2. Entropy is 0 when the group is all one colour and 1 when it is half and half. It usually picks the same questions as Gini impurity.',
     gainKey: 'For every possible question the tree works out the <strong>impurity drop</strong>: the impurity of the group before the split, minus the impurity of the two new groups (each counted in proportion to its size, n<sub>yes</sub> and n<sub>no</sub> out of n). The question with the biggest drop wins.',
     training: 'A group that is not split any further is called a <strong>leaf</strong>. To classify a new point, follow the questions down to a leaf: the probability of blue is the share of blue training points in that leaf. Each training step here is <strong>one split</strong>.',

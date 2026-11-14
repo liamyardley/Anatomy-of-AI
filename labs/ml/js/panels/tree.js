@@ -8,7 +8,9 @@
 
 import { MODEL_NOTES, COPY } from '../../content/notes.js';
 import { fmt, setValue, renderTex } from '../format.js';
-import { roles, setHtml, classLabel, verdict } from './shared.js';
+import {
+  roles, setHtml, classLabel, verdict, settingLink, followSettingLinks,
+} from './shared.js';
 
 const note = MODEL_NOTES.tree;
 
@@ -140,6 +142,7 @@ export function createTreePanel({ intro, detail, wide, setOverlay }) {
   intro.innerHTML = `
       <h3 class="card-title">${note.title}</h3>
       <p class="blurb">${note.idea}</p>
+      <p class="blurb" data-role="using"></p>
       <div class="formula" data-role="gini"></div>
       <p class="small-print" data-role="giniKey"></p>
       <div class="formula" data-role="gain"></div>
@@ -187,6 +190,7 @@ export function createTreePanel({ intro, detail, wide, setOverlay }) {
     </div>`;
 
   const el = roles(intro, detail, wide);
+  followSettingLinks(intro);
   renderTex(el.gain, '\\text{drop} = G - \\frac{n_{\\text{yes}}}{n}\\,G_{\\text{yes}} - \\frac{n_{\\text{no}}}{n}\\,G_{\\text{no}}', { display: true });
 
   let nodes = [];          // the tree last shown
@@ -259,6 +263,8 @@ export function createTreePanel({ intro, detail, wide, setOverlay }) {
     setValue(el.depth, String(info.depth), flash);
     setValue(el.pruned, String(info.pruned), flash);
     const measure = CRITERIA[info.criterion];
+    const link = settingLink('criterion', `<strong>${note.criterionNames[info.criterion]}</strong>`);
+    setHtml(el.using, info.criterion === 'gini' ? note.usingDefault(link) : note.usingChosen(link));
     renderTex(el.gini, measure.tex, { display: true });
     setHtml(el.giniKey, info.criterion === 'entropy' ? note.entropyKey : note.giniKey);
     el.diagramNote.textContent = info.trained ? note.diagram : note.diagramUntrained;
