@@ -426,3 +426,120 @@ test('k-NN with cosine distance: an extra training phase, and stepping equals fi
   assert.equal(marks.points.length, X.length);
   for (const [a, b] of marks.points) assert.ok(Math.abs(Math.hypot(a, b) - 0.92) < 1e-9);
 });
+
+// ===== tree and forest options =====
+
+import { entropy } from '../labs/ml/js/models/tree.js';
+
+const treeInfo = (params, data) => fit(createTree(params), data.X, data.y).explain();
+
+test('entropy: 0 for a pure group, 1 for an even mix', () => {
+  assert.equal(entropy(10, 0), 0);
+  assert.equal(entropy(5, 5), 1);
+  assert.ok(entropy(9, 1) < entropy(7, 3));
+});
+
+test('tree with entropy: still solves XOR, and records entropy as its impurity', () => {
+  const { X, y } = xor();
+  const model = fit(createTree({ maxDepth: 2, criterion: 'entropy' }), X, y);
+  assert.equal(accuracy(model, X, y), 1);
+  const root = model.explain().nodes[0];
+  assert.ok(Math.abs(root.impurity - entropy(root.red, root.blue)) < 1e-12);
+});
+
+test('tree: minimum samples to split is respected', () => {
+  const data = lab('noise');
+  const info = treeInfo({ maxDepth: 30, minSplit: 20 }, data);
+  for (const node of info.nodes) {
+    if (node.split) assert.ok(node.red + node.blue >= 20);
+  }
+  assert.ok(info.leaves < treeInfo({ maxDepth: 30 }, data).leaves);
+});
+
+test('tree: a leaf limit is never exceeded, and is spent on the best splits', () => {
+  const data = lab('islands');
+  for (const maxLeaves of [2, 3, 5, 8]) {
+    const info = treeInfo({ maxDepth: 10, maxLeaves }, data);
+    assert.equal(info.leaves, maxLeaves);
+    assert.equal(info.splits, maxLeaves - 1);
+  }
+  // Best first is not level by level: five leaves can reach deeper than
+  // a level-by-level tree of five leaves could.
+  const limited = treeInfo({ maxDepth: 10, maxLeaves: 5 }, data);
+  assert.ok(limited.depth >= 3);
+  // With no limit the tree is unchanged from before the option existed.
+  const { X, y } = data;
+  const plain = fit(createTree({ maxDepth: 4 }), X, y);
+  const noLimit = fit(createTree({ maxDepth: 4, maxLeaves: 0 }), X, y);
+  for (const x of probes) assert.equal(plain.predictProba(x), noLimit.predictProba(x));
+});
+
+test('pruning: stronger pruning never leaves a bigger tree, and enough of it leaves one leaf', () => {
+  const data = lab('islands');
+  const sizes = [0, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 1].map(
+    (ccpAlpha) => treeInfo({ maxDepth: 10, ccpAlpha }, data).leaves,
+  );
+  for (let i = 1; i < sizes.length; i++) assert.ok(sizes[i] <= sizes[i - 1], sizes.join(' '));
+  assert.ok(sizes[0] > sizes[4]);
+  assert.equal(sizes.at(-1), 1);
+});
+
+test('pruning: happens after growth, one split per step, and leaves a tidy tree', () => {
+  const { X, y } = lab('islands');
+  const model = createTree({ maxDepth: 10, ccpAlpha: 0.01 });
+  const trainer = model.train(X, y);
+  const phases = [];
+  let result = trainer.step();
+  let prunedBefore = 0;
+  while (!result.done) {
+    phases.push(result.snapshot.phase);
+    assert.ok(result.snapshot.pruned - prunedBefore <= 1);
+    prunedBefore = result.snapshot.pruned;
+    result = trainer.step();
+  }
+  assert.ok(phases.indexOf('prune') > 0);
+  assert.ok(!phases.slice(phases.indexOf('prune')).includes('grow'));
+  const info = model.explain();
+  assert.ok(info.pruned > 0);
+  // Ids match positions, every split has two children, and counts agree.
+  info.nodes.forEach((node, i) => {
+    assert.equal(node.id, i);
+    if (node.split) assert.equal(node.left.red + node.left.blue + node.right.red + node.right.blue, node.red + node.blue);
+  });
+  assert.equal(info.nodes.filter((n) => !n.split).length, info.leaves);
+  // Stepping and finishing agree.
+  const whole = fit(createTree({ maxDepth: 10, ccpAlpha: 0.01 }), X, y);
+  for (const x of probes) assert.equal(model.predictProba(x), whole.predictProba(x));
+});
+
+test('pruning a deep tree on noisy labels does not hurt, and usually helps, on new points', () => {
+  let better = 0;
+  let worse = 0;
+  for (let seed = 1; seed <= 12; seed++) {
+    const points = buildPoints(createDataset('islands', seed), 300, 1, 0.7);
+    const train = split(points.filter((p) => !p.test));
+    const test = split(points.filter((p) => p.test));
+    const deep = accuracy(fit(createTree({ maxDepth: 10 }), train.X, train.y), test.X, test.y);
+    const pruned = accuracy(fit(createTree({ maxDepth: 10, ccpAlpha: 0.01 }), train.X, train.y), test.X, test.y);
+    if (pruned > deep) better++;
+    if (pruned < deep) worse++;
+  }
+  assert.ok(better > worse, `better ${better}, worse ${worse}`);
+});
+
+test('forest: minimum samples per leaf and sample size are respected', () => {
+  const { X, y } = lab('islands');
+  const small = fit(createForest({ trees: 8, sampleShare: 0.25, seed: 3 }), X, y);
+  const info = small.explain();
+  // Small samples leave most points out of each bag, so nearly every point can be scored.
+  assert.ok(info.oobCounted >= X.length - 1);
+  const full = fit(createForest({ trees: 8, seed: 3 }), X, y);
+  assert.ok(probes.some((x) => small.predictProba(x) !== full.predictProba(x)));
+  // Big leaves make blunter trees: training accuracy drops.
+  const blunt = fit(createForest({ trees: 8, minLeaf: 20, seed: 3 }), X, y);
+  assert.ok(accuracy(blunt, X, y) < accuracy(full, X, y));
+  // Sample size does nothing without bootstrap samples.
+  const a = fit(createForest({ trees: 4, bootstrap: false, sampleShare: 0.25, seed: 3 }), X, y);
+  const b = fit(createForest({ trees: 4, bootstrap: false, seed: 3 }), X, y);
+  assert.ok(probes.every((x) => a.predictProba(x) === b.predictProba(x)));
+});

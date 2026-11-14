@@ -17,8 +17,22 @@ const FEATURE_TEXT = ['x₁', 'x₂'];
 const LEAF_REASONS = {
   depth: 'It is at the maximum depth, so the tree did not look for another question.',
   pure: 'Every point in it is the same colour, so there is nothing left to split.',
-  small: 'It holds too few points to split under the minimum samples per leaf.',
+  small: 'It holds too few points to be split under the current minimum settings.',
   nogain: 'No question made its two halves any purer, so it stays a leaf.',
+  leaves: 'The tree reached its maximum number of leaves before this group\'s turn came.',
+  pruned: 'It was split while the tree grew, but pruning removed the split: it did not remove enough impurity to be worth its extra leaves.',
+};
+const WAITING = 'It can be split, and is waiting its turn.';
+
+// How impurity is measured, in words and symbols.
+const CRITERIA = {
+  gini: { name: 'Gini impurity', top: 0.5, value: (p) => 2 * p * (1 - p), tex: 'G = 1 - p_{\\text{red}}^2 - p_{\\text{blue}}^2' },
+  entropy: {
+    name: 'entropy',
+    top: 1,
+    value: (p) => (p <= 0 || p >= 1 ? 0 : -(p * Math.log2(p) + (1 - p) * Math.log2(1 - p))),
+    tex: 'G = -\\,p_{\\text{red}}\\log_2 p_{\\text{red}} - p_{\\text{blue}}\\log_2 p_{\\text{blue}}',
+  },
 };
 
 // --- the tree diagram ---
@@ -81,14 +95,16 @@ function diagramSvg(nodes) {
   };
 }
 
-// --- Gini impurity picture ---
+// --- impurity picture ---
 
-function giniChart(node) {
+function giniChart(node, criterion) {
+  const measure = CRITERIA[criterion];
+  const title = measure.name.charAt(0).toUpperCase() + measure.name.slice(1);
   const W = 320, H = 176, L = 30, R = 312, T = 14, B = 146;
   const x = (p) => L + p * (R - L);
-  const y = (g) => B - (g / 0.5) * (B - T);
+  const y = (g) => B - (g / measure.top) * (B - T);
   const curve = [];
-  for (let p = 0; p <= 1.0001; p += 0.025) curve.push(`${x(p).toFixed(1)},${y(2 * p * (1 - p)).toFixed(1)}`);
+  for (let p = 0; p <= 1.0001; p += 0.025) curve.push(`${x(p).toFixed(1)},${y(measure.value(Math.min(p, 1))).toFixed(1)}`);
   const share = (n) => (n.red + n.blue === 0 ? 0.5 : n.blue / (n.red + n.blue));
   let marks = '';
   if (node) {
@@ -96,21 +112,21 @@ function giniChart(node) {
     if (node.split) {
       for (const [child, word] of [[node.left, 'yes'], [node.right, 'no']]) {
         const cp = share(child);
-        marks += `<line class="query-line" x1="${x(p).toFixed(1)}" y1="${y(node.gini).toFixed(1)}" x2="${x(cp).toFixed(1)}" y2="${y(child.gini).toFixed(1)}"/>
-          <circle class="curve-end" cx="${x(cp).toFixed(1)}" cy="${y(child.gini).toFixed(1)}" r="4"/>
-          <text class="tick" x="${x(cp).toFixed(1)}" y="${(y(child.gini) - 8).toFixed(1)}" text-anchor="middle">${word}</text>`;
+        marks += `<line class="query-line" x1="${x(p).toFixed(1)}" y1="${y(node.impurity).toFixed(1)}" x2="${x(cp).toFixed(1)}" y2="${y(child.impurity).toFixed(1)}"/>
+          <circle class="curve-end" cx="${x(cp).toFixed(1)}" cy="${y(child.impurity).toFixed(1)}" r="4"/>
+          <text class="tick" x="${x(cp).toFixed(1)}" y="${(y(child.impurity) - 8).toFixed(1)}" text-anchor="middle">${word}</text>`;
       }
     }
-    marks += `<circle class="query-ring" cx="${x(p).toFixed(1)}" cy="${y(node.gini).toFixed(1)}" r="6"/>`;
+    marks += `<circle class="query-ring" cx="${x(p).toFixed(1)}" cy="${y(node.impurity).toFixed(1)}" r="6"/>`;
   }
   const label = node
-    ? `Gini impurity of the selected group is ${node.gini.toFixed(2)}`
-    : 'Gini impurity for every mix of red and blue';
+    ? `${title} of the selected group is ${node.impurity.toFixed(2)}`
+    : `${title} for every mix of red and blue`;
   return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${label}">
     <line class="axis" x1="${L}" y1="${B}" x2="${R}" y2="${B}"/><line class="axis" x1="${L}" y1="${T}" x2="${L}" y2="${B}"/>
-    <text class="tick" x="${L - 4}" y="${T + 4}" text-anchor="end">0.5</text>
+    <text class="tick" x="${L - 4}" y="${T + 4}" text-anchor="end">${measure.top}</text>
     <text class="tick" x="${L - 4}" y="${B + 3}" text-anchor="end">0</text>
-    <text class="tick" x="${L + 4}" y="${T - 3}">Gini impurity</text>
+    <text class="tick" x="${L + 4}" y="${T - 3}">${title}</text>
     <text class="tick" x="${L}" y="${B + 12}">all red</text>
     <text class="tick" x="${(L + R) / 2}" y="${B + 12}" text-anchor="middle">half and half</text>
     <text class="tick" x="${R}" y="${B + 12}" text-anchor="end">all blue</text>
@@ -125,7 +141,7 @@ export function createTreePanel({ intro, detail, wide, setOverlay }) {
       <h3 class="card-title">${note.title}</h3>
       <p class="blurb">${note.idea}</p>
       <div class="formula" data-role="gini"></div>
-      <p class="small-print">${note.giniKey}</p>
+      <p class="small-print" data-role="giniKey"></p>
       <div class="formula" data-role="gain"></div>
       <p class="small-print">${note.gainKey}</p>
       <p class="blurb">${note.training}</p>`;
@@ -138,6 +154,7 @@ export function createTreePanel({ intro, detail, wide, setOverlay }) {
         <div><span class="fact-label">Splits</span><span class="num" data-role="splits"></span></div>
         <div><span class="fact-label">Leaves</span><span class="num" data-role="leaves"></span></div>
         <div><span class="fact-label">Depth</span><span class="num" data-role="depth"></span></div>
+        <div><span class="fact-label">Branches pruned</span><span class="num" data-role="pruned"></span></div>
       </div>
       <div class="tree-diagram fitted" data-role="diagram" tabindex="0" role="group"
         aria-label="Tree diagram. Use the arrow keys to move between groups: up for the parent, left for the yes answer, right for the no answer."></div>
@@ -170,13 +187,11 @@ export function createTreePanel({ intro, detail, wide, setOverlay }) {
     </div>`;
 
   const el = roles(intro, detail, wide);
-  renderTex(el.gini, 'G = 1 - p_{\\text{red}}^2 - p_{\\text{blue}}^2', { display: true });
   renderTex(el.gain, '\\text{drop} = G - \\frac{n_{\\text{yes}}}{n}\\,G_{\\text{yes}} - \\frac{n_{\\text{no}}}{n}\\,G_{\\text{no}}', { display: true });
 
   let nodes = [];          // the tree last shown
-  let drawn = null;        // { list, length } of the tree last drawn
+  let drawn = null;        // { list, version } of the tree last drawn
   let selected = null;     // id of the selected group
-  let lastSplitSeen = null;
   let lit = false;         // is the selected group's rectangle lit on the plot?
   let positions = new Map(); // where each box sits in the diagram
 
@@ -242,27 +257,28 @@ export function createTreePanel({ intro, detail, wide, setOverlay }) {
     setValue(el.splits, String(info.splits), flash);
     setValue(el.leaves, info.trained ? String(info.leaves) : '0', flash);
     setValue(el.depth, String(info.depth), flash);
+    setValue(el.pruned, String(info.pruned), flash);
+    const measure = CRITERIA[info.criterion];
+    renderTex(el.gini, measure.tex, { display: true });
+    setHtml(el.giniKey, info.criterion === 'entropy' ? note.entropyKey : note.giniKey);
     el.diagramNote.textContent = info.trained ? note.diagram : note.diagramUntrained;
 
     // Redraw the diagram only when the tree itself has changed.
-    if (!drawn || drawn.list !== nodes || drawn.length !== nodes.length) {
+    if (!drawn || drawn.list !== nodes || drawn.version !== info.version) {
       const sameTree = drawn && drawn.list === nodes;
-      drawn = { list: nodes, length: nodes.length };
+      const changed = sameTree && info.lastSplit !== null;
+      drawn = { list: nodes, version: info.version };
       const picture = nodes.length ? diagramSvg(nodes) : { at: new Map(), svg: '' };
       positions = picture.at;
       el.diagram.innerHTML = picture.svg;
       el.diagram.hidden = nodes.length === 0;
       if (!sameTree) {
         selected = nodes.length ? 0 : null;
-        lastSplitSeen = null;
         // A highlight left over from the previous tree no longer means anything.
         if (lit) queueMicrotask(() => light(false));
       }
-    }
-    // While the tree grows, follow the newest split.
-    if (info.lastSplit !== lastSplitSeen) {
-      lastSplitSeen = info.lastSplit;
-      if (info.lastSplit !== null) { selected = info.lastSplit; reveal(); }
+      // While the tree grows or is pruned, follow the newest change.
+      if (changed || (!sameTree && info.lastSplit !== null)) { selected = info.lastSplit; reveal(); }
     }
 
     // Mark the selected group and the query point's route.
@@ -282,8 +298,8 @@ export function createTreePanel({ intro, detail, wide, setOverlay }) {
       el.selectedText.textContent = note.diagramUntrained;
     } else {
       const kind = node.split ? 'This group' : 'This leaf';
-      let text = `${kind} holds ${node.red} red and ${node.blue} blue training points. Its Gini impurity is ${fmt(node.gini)}.`;
-      if (!node.split) text += ` ${LEAF_REASONS[node.leafReason] || 'The tree has not looked at it yet.'}`;
+      let text = `${kind} holds ${node.red} red and ${node.blue} blue training points. Its ${measure.name} is ${fmt(node.impurity)}.`;
+      if (!node.split) text += ` ${LEAF_REASONS[node.leafReason] || WAITING}`;
       el.selectedText.textContent = text;
       if (node.candidates) {
         setHtml(el.candidates, node.candidates.map((c) => {
@@ -320,7 +336,7 @@ export function createTreePanel({ intro, detail, wide, setOverlay }) {
         <li><strong>Compare with the threshold.</strong> <span class="num-line">${verdict(ex.p, threshold)}</span></li>`);
     }
 
-    el.giniChart.innerHTML = giniChart(node);
+    el.giniChart.innerHTML = giniChart(node, info.criterion);
   }
 
   return { update };

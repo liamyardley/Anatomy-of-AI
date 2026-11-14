@@ -103,6 +103,25 @@ export const MODELS = {
     params: [
       { key: 'maxDepth', label: 'Maximum depth', min: 1, max: 10, step: 1, initial: 3 },
       { key: 'minLeaf', label: 'Minimum samples per leaf', min: 1, max: 20, step: 1, initial: 1 },
+      {
+        key: 'criterion', label: 'Impurity measure', type: 'choice', initial: 'gini', advanced: true,
+        options: [
+          { value: 'gini', label: 'Gini impurity', short: 'Gini' },
+          { value: 'entropy', label: 'Entropy', short: 'entropy' },
+        ],
+      },
+      {
+        key: 'minSplit', label: 'Minimum samples to split', advanced: true, initial: 2,
+        values: [2, 3, 4, 5, 6, 8, 10, 15, 20, 30, 40],
+      },
+      {
+        key: 'maxLeaves', label: 'Maximum number of leaves', advanced: true, initial: 0,
+        values: [0, 2, 3, 4, 5, 6, 8, 10, 15, 20, 30, 50], format: (v) => (v === 0 ? 'no limit' : String(v)),
+      },
+      {
+        key: 'ccpAlpha', label: 'Pruning strength', advanced: true, initial: 0,
+        values: [0, 0.002, 0.005, 0.01, 0.02, 0.03, 0.05, 0.1], format: (v) => (v === 0 ? 'off' : String(v)),
+      },
     ],
     speeds: {
       slow: { steps: 1, interval: 1000 },
@@ -110,10 +129,18 @@ export const MODELS = {
       fast: { steps: 1, interval: 60 },
     },
     animationGrid: 120,
-    progress: (s) => `Training: ${plural(s.splits, 'split')} made, ${plural(s.leaves, 'leaf', 'leaves')}`,
-    finished: (s) => (s.splits === 0
-      ? 'Finished: no split made the groups any purer, so the tree is a single leaf.'
-      : `Finished: ${plural(s.splits, 'split')}, ${s.leaves} leaves, ${plural(s.depth, 'question')} deep.`),
+    progress: (s) => (s.pruned > 0
+      ? `Pruning: ${plural(s.pruned, 'branch', 'branches')} cut back so far, ${plural(s.leaves, 'leaf', 'leaves')} left`
+      : `Training: ${plural(s.splits, 'split')} made, ${plural(s.leaves, 'leaf', 'leaves')}`),
+    finished: (s) => {
+      const pruned = s.pruned > 0 ? ` Pruning cut back ${plural(s.pruned, 'branch', 'branches')}.` : '';
+      if (s.splits === 0) {
+        return s.pruned > 0
+          ? `Finished: pruning removed every split, so the tree is a single leaf.`
+          : 'Finished: no split made the groups any purer, so the tree is a single leaf.';
+      }
+      return `Finished: ${plural(s.splits, 'split')}, ${s.leaves} leaves, ${plural(s.depth, 'question')} deep.${pruned}`;
+    },
   },
 
   forest: {
@@ -125,6 +152,12 @@ export const MODELS = {
       { key: 'maxDepth', label: 'Maximum depth', min: 1, max: 10, step: 1, initial: 6 },
       { key: 'bootstrap', label: 'Bootstrap samples', type: 'toggle', initial: true, format: onOff },
       { key: 'featuresPerSplit', label: 'Features considered per split', min: 1, max: 2, step: 1, initial: 1 },
+      { key: 'minLeaf', label: 'Minimum samples per leaf', min: 1, max: 20, step: 1, initial: 1, advanced: true },
+      {
+        key: 'sampleShare', label: 'Sample size per tree', advanced: true, initial: 1,
+        values: [0.1, 0.25, 0.5, 0.75, 1], format: (v) => `${Math.round(v * 100)}% of the training points`,
+        showIf: (params) => params.bootstrap,
+      },
     ],
     speeds: {
       slow: { steps: 1, interval: 500 },

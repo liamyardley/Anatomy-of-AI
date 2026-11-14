@@ -130,8 +130,8 @@ Next, step 1: **more parameters on the existing models**
   - **Minkowski with a p slider**, morphing the shape smoothly from diamond (p = 1) to circle (p = 2) towards square (large p);
   - **Cosine:** ignores how far a point is from the origin and compares only direction. Visualise it by sliding every point onto the unit circle (animated), then finding neighbours by angle, so the neighbourhood is a wedge from the origin and the regions become slices radiating outwards. The Ring dataset becomes impossible (inner and outer points share directions), which is the lesson. This also sets up the word vectors lab, where similar words cluster on a sphere by angle.
 - [ ] Logistic regression: L1, L2 or elastic net penalty; choice of optimiser (from the shared optimiser module).
-- [ ] Decision tree: Gini or entropy; minimum samples to split; maximum number of leaves; **cost-complexity pruning** (tree regularisation).
-- [ ] Random forest: minimum samples per leaf; sample size per tree.
+- [x] Decision tree: Gini or entropy; minimum samples to split; maximum number of leaves; **cost-complexity pruning** (tree regularisation).
+- [x] Random forest: minimum samples per leaf; sample size per tree.
 - [ ] Global: train/test split ratio; **k-fold cross-validation** with the folds shown on the plot.
 - [ ] **Sweep:** train across a range of one parameter and plot training and test accuracy against it (the bias-variance U-curve).
 

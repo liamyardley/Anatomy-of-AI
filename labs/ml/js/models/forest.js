@@ -2,9 +2,9 @@
 //
 // Grow many decision trees, each a little different, and average their
 // answers. Two things make the trees differ:
-//   - each tree learns from its own bootstrap sample: as many points as the
-//     training set, drawn at random with replacement, so some points appear
-//     several times and about a third are left out;
+//   - each tree learns from its own bootstrap sample: points drawn at random
+//     with replacement (by default as many as the training set holds), so
+//     some points appear several times and about a third are left out;
 //   - at each split a tree may be allowed to look at only one feature,
 //     chosen at random.
 // All of that randomness comes from the lab's seeded generator, so the same
@@ -20,6 +20,8 @@ const THUMBNAILS = 9; // how many of the first trees explain() hands over to be 
 
 export function createForest({
   trees = 50, maxDepth = 6, bootstrap = true, featuresPerSplit = 1, seed = 0,
+  minLeaf = 1,       // the fewest training points a leaf may hold
+  sampleShare = 1,   // size of each bootstrap sample, as a share of the training set
 } = {}) {
   let grown = [];       // one entry per tree: { tree, sample, view }
   let data = null;
@@ -50,13 +52,14 @@ export function createForest({
       if (bootstrap) {
         rows = [];
         inBag = new Uint8Array(n);
-        for (let i = 0; i < n; i++) {
+        const draws = Math.max(1, Math.round(sampleShare * n));
+        for (let i = 0; i < draws; i++) {
           const pick = Math.floor(rng.next() * n);
           rows.push(pick);
           inBag[pick] = 1;
         }
       }
-      const tree = growTree(X, y, { maxDepth, minLeaf: 1, featuresPerSplit, rng, rows });
+      const tree = growTree(X, y, { maxDepth, minLeaf, featuresPerSplit, rng, rows });
       tree.finish();
       if (inBag) {
         for (let i = 0; i < n; i++) {
