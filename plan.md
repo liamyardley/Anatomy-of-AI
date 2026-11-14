@@ -43,12 +43,13 @@ Shared engine, built once in the ML lab and reused everywhere: the 2D plot, the 
 
 Two tiers, doing different jobs.
 
-### 4a. Code-along (on-screen, inside each lab)
+### 4a. Code-along (separate pages, alongside the labs)
 
 The gap this fills: coding courses show code with no picture of what it is doing, and visual demos show pictures with no code. The code-along joins them, so a novice coder can see what each line does and what each argument tunes.
 
-- A **code panel** that can be opened in any lab, building up the Python for what is on screen in small stages. Each stage is a few lines with a plain-English explanation of what they do.
-- **Each stage lights up the part of the lab it creates.** For example, in the ML lab:
+- **Where it lives (decided):** code-alongs are their own pages, not a panel inside the labs. The labs already hold a lot and stay as places to explore. Each code-along page takes one aspect of a lab, with a visualisation built for it (reused from the lab's engine, or new), so the existing labs do not need adapting.
+- Each page builds up the Python for one idea in small stages. Each stage is a few lines with a plain-English explanation of what they do.
+- **Each stage lights up the part of the visualisation it creates.** For example, for classification:
   1. load the data → the points appear on the plot;
   2. split into train and test → test points turn hollow;
   3. create the model → the parameter panel highlights;
@@ -57,8 +58,8 @@ The gap this fills: coding courses show code with no picture of what it is doing
 - **Two-way link between code and controls.** Moving a slider rewrites the argument in the code (`KNeighborsClassifier(n_neighbors=7)`), and editing the argument in the code moves the slider and marks the model as needing retraining.
 - **Two versions of each model's code:** "from scratch" (numpy, matching the maths panel line for line) and "with scikit-learn" (what you would write in practice), so learners see that the library is doing the maths they have just watched.
 - **Fill-in-the-gap exercises** with instant checks, in the same staged structure: worked example, then gaps, then an open extension.
-- **Running real Python:** use Pyodide (Python with numpy and scikit-learn, running in the browser, nothing to install), loaded only when the code panel is opened, as it is a large first download. To be confirmed with a prototype: load time, and whether scikit-learn is fast enough to drive the animations, or whether the JS engine animates while Python checks the learner's answers.
-- **Build the hooks early.** Even before the code panel exists, every lab should emit events for each stage (data loaded, split, fit step, evaluated) so the code-along can attach later without rewiring.
+- **Running real Python:** use Pyodide (Python with numpy and scikit-learn, running in the browser, nothing to install), loaded only on the code-along pages, as it is a large first download. To be confirmed with a prototype: load time, and whether scikit-learn is fast enough to drive the animations, or whether the JS engine animates while Python checks the learner's answers.
+- **No hooks needed in the labs.** Because the code-alongs are separate pages, the labs do not have to emit stage events. The code-along pages reuse the shared engine (plot, models, training controls) directly.
 
 ### 4b. Colab projects (full projects on real data)
 
@@ -119,7 +120,7 @@ Notes on what was built (where it differs from, or adds to, the brief):
 - Noisy islands does not single out the random forest: at default settings logistic regression and k-NN do as well. The activity text says so. Open: change the generator, or leave it.
 - The engine (plot, training controls, RNG, model interface) lives in `labs/ml/js/` for now, not in `assets/`. It moves when a second lab needs it.
 - Still to do from the brief's checks: try it with reduced motion, on a real touch device, and with a screen reader.
-- Not built yet from section 3 and 4a: the optimiser module, and the stage events for the code-along.
+- Not built yet from section 3: the optimiser module (planned with the logistic regression options in step 1).
 
 Next, step 1: **more parameters on the existing models**
 - [ ] k-NN **distance metrics**, each visualised the way Euclidean is (the user sees the "neighbourhood shape" around a query point):
@@ -128,12 +129,22 @@ Next, step 1: **more parameters on the existing models**
   - Chebyshev: a square;
   - **Minkowski with a p slider**, morphing the shape smoothly from diamond (p = 1) to circle (p = 2) towards square (large p);
   - **Cosine:** ignores how far a point is from the origin and compares only direction. Visualise it by sliding every point onto the unit circle (animated), then finding neighbours by angle, so the neighbourhood is a wedge from the origin and the regions become slices radiating outwards. The Ring dataset becomes impossible (inner and outer points share directions), which is the lesson. This also sets up the word vectors lab, where similar words cluster on a sphere by angle.
-- [ ] A **"stretch x₁ by 10"** switch on the data, plus a **scale features** option: shows k-NN (and later SVM and neural networks) breaking on unscaled data while trees are unaffected.
 - [ ] Logistic regression: L1, L2 or elastic net penalty; choice of optimiser (from the shared optimiser module).
 - [ ] Decision tree: Gini or entropy; minimum samples to split; maximum number of leaves; **cost-complexity pruning** (tree regularisation).
 - [ ] Random forest: minimum samples per leaf; sample size per tree.
-- [ ] Global: class weights (with an unbalanced dataset option); train/test split ratio; **k-fold cross-validation** with the folds shown on the plot.
+- [ ] Global: train/test split ratio; **k-fold cross-validation** with the folds shown on the plot.
 - [ ] **Sweep:** train across a range of one parameter and plot training and test accuracy against it (the bias-variance U-curve).
+
+Decided for step 1:
+- The settings each model has today stay on show; the new ones sit behind a **"More settings"** toggle, so the lab stays approachable.
+- L1 uses a soft-threshold step after each update, so lasso sets weights to exactly zero.
+- SGD stops on a smoothed loss or after a fixed number of passes through the data, and has a batch size setting.
+- With a maximum number of leaves, the tree splits the group with the biggest impurity drop first (as scikit-learn does) instead of growing level by level.
+- Build order, each piece committed and reviewed: groundwork (drop-down and conditional settings, any-shape outlines on the plot), k-NN distance metrics, tree and forest options, logistic regression penalties and optimisers, global options, sweep.
+
+Tabled for later (not in step 1):
+- A **"stretch x₁ by 10"** switch on the data, plus a **scale features** option: shows k-NN (and later SVM and neural networks) breaking on unscaled data while trees are unaffected.
+- **Class weights**, with an unbalanced dataset option. Touches all four models.
 
 Next, step 2: **more models**, in this order
 - [ ] Gradient boosting: each step adds one tree fitted to the previous trees' mistakes; the contrast with the forest (average of independent trees vs a chain of corrections).
@@ -215,7 +226,7 @@ Next, step 3: **regression mode** (one input, a continuous output, click to plac
 1. ML Lab 1, phases 1 to 6 (`ML-Lab-brief.md`): done
 2. ML Lab 1, step 1: more parameters, including distance metrics (next)
 3. ML Lab 1, step 2: more models
-4. **Code-along prototype** on ML Lab 1 (k-NN first): tests the most novel idea before many more labs are built around it
+4. **Code-along prototype** as its own page (k-NN first): tests the most novel idea before many more labs are built around it
 5. ML Lab 2: optimisation and regularisation
 6. ML Lab 3: unsupervised
 7. Deep learning: neural network lab
