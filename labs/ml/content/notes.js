@@ -163,14 +163,22 @@ export const MODEL_NOTES = {
 
   knn: {
     title: 'k-nearest neighbours',
-    idea: 'k-nearest neighbours (k-NN for short) has no formula to fit. To classify a point, it finds the <strong>k</strong> training points closest to it, its <strong>neighbours</strong>, and lets them vote. "Closest" means the ordinary straight-line distance between two points, called the <strong>Euclidean distance</strong>.',
-    distanceKey: 'Here (x<sub>1</sub>, x<sub>2</sub>) is the point being classified and (a<sub>1</sub>, a<sub>2</sub>) is a stored training point.',
+    idea: 'k-nearest neighbours (k-NN for short) has no formula to fit. To classify a point, it finds the <strong>k</strong> training points closest to it, its <strong>neighbours</strong>, and lets them vote. How "closest" is measured is a choice. The usual one is the ordinary straight-line distance between two points, called the <strong>Euclidean distance</strong>.',
+    distanceKey: 'Here (x<sub>1</sub>, x<sub>2</sub>) is the point being classified, (a<sub>1</sub>, a<sub>2</sub>) is a stored training point and d is the distance between them.',
     vote: 'The probability of blue is simply the share of the k neighbours that are blue. With <strong>distance weighting</strong> switched on, each neighbour\'s vote counts for more the closer it is.',
     training: 'There is <strong>no training</strong> in the usual sense. Pressing Train only copies the training points into memory. All the real work happens later, at <strong>prediction time</strong>: every single prediction means measuring the distance to every stored point.',
     memory: 'This table is the whole model: a copy of the training points and nothing else. No weights, no rules.',
     memoryUntrained: 'The memory is empty. Press Train to watch the training points being copied in.',
     filling: 'Once the points are stored, the plot fills in from the top. Each patch of the plot asks its own k nearest neighbours which colour it should be.',
-    picture: 'The stored points nearest to your query point, lined up by distance. Everything inside the shaded band is one of the k nearest and gets a vote; everything beyond it is ignored. On the plot, the same k points are joined to the query point, and the dashed circle reaches exactly as far as the furthest of them.',
+    picture: 'The stored points nearest to your query point, lined up by distance. Everything inside the shaded band is one of the k nearest and gets a vote; everything beyond it is ignored. On the plot, the same k points are joined to the query point, and the dashed outline reaches exactly as far as the furthest of them. Its shape is the shape of "equally far away" under the chosen distance measure.',
+    // One line per distance measure, shown under its formula.
+    metrics: {
+      euclidean: 'Euclidean distance is the straight-line distance. Everything equally far from a point lies on a <strong>circle</strong>.',
+      manhattan: 'Manhattan distance adds the gap across to the gap up, like walking along a grid of city streets. Everything equally far from a point lies on a <strong>diamond</strong>.',
+      chebyshev: 'Chebyshev distance takes only the bigger of the two gaps, across or up. Everything equally far from a point lies on a <strong>square</strong>.',
+      minkowski: 'Minkowski distance is a whole family, set by a power p. With p = 1 it is Manhattan distance, with p = 2 it is Euclidean, and as p grows it approaches Chebyshev: the outline swells from a diamond, through a circle, towards a square.',
+      cosine: 'Cosine distance ignores how far a point is from the centre of the plot and compares only its <strong>direction</strong>. Here &theta; (theta) is the angle between the two points as seen from the centre: the distance is 0 when they lie in the same direction. Everything equally far from a point lies along the edges of a <strong>wedge</strong> spreading out from the centre.',
+    },
     threshold: 'With k-nearest neighbours the probability can only take a few values (with k = 5: 0, 0.2, 0.4, 0.6, 0.8 or 1), so as the threshold moves the boundary stays put and then jumps, instead of gliding.',
   },
 
@@ -215,6 +223,8 @@ export const PARAM_NOTES = {
   },
   knn: {
     k: 'k is how many neighbours get a vote. With k = 1 each point is given the colour of its single nearest neighbour, so the boundary is jagged and wraps around every stray point. Larger values smooth the boundary; very large values smooth away real detail as well.',
+    metric: 'This decides what "closest" means. Each measure gives the neighbourhood a different shape, drawn as a dashed outline around your query point: a circle, a diamond, a square, or (for cosine) a wedge spreading out from the centre. Try each on the same dataset, then try cosine on the Ring: can you see why it cannot work there?',
+    p: 'The power p bends the neighbourhood from one shape to another. At 1 it is a diamond (Manhattan), at 2 a circle (Euclidean), and as p grows it squares off towards Chebyshev. Slide it and watch the outline around your query point change.',
     weighted: 'When this is on, a neighbour\'s vote counts for more the closer it is (each vote is worth 1 divided by its distance). It matters most when k is large: far-off neighbours still vote, but quietly. Look for the boundary hugging nearby points more tightly.',
   },
   tree: {

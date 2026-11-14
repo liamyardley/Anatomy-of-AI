@@ -9,7 +9,10 @@
 //   createPanel    builds the model's part of the maths panel
 //   params         the settings shown as controls; `values` gives a slider
 //                  fixed stops, `type: 'toggle'` gives an on/off switch,
-//                  otherwise min, max and step are used
+//                  `type: 'choice'` a drop-down list of `options` (each
+//                  { value, label, short }), otherwise min, max and step
+//                  are used. `advanced: true` puts a setting behind "More
+//                  settings"; `showIf(params)` shows it only when relevant
 //   speeds         training steps per tick, and milliseconds between ticks
 //   animationGrid  resolution of the shaded regions while training animates
 //   progress(s)    one line describing a training snapshot
@@ -64,6 +67,20 @@ export const MODELS = {
     params: [
       { key: 'k', label: 'Neighbours (k)', values: ODD_K, initial: 5 },
       { key: 'weighted', label: 'Distance weighting', type: 'toggle', initial: false, format: onOff },
+      {
+        key: 'metric', label: 'Distance measure', type: 'choice', initial: 'euclidean', advanced: true,
+        options: [
+          { value: 'euclidean', label: 'Euclidean (straight line)', short: 'Euclidean' },
+          { value: 'manhattan', label: 'Manhattan (city blocks)', short: 'Manhattan' },
+          { value: 'chebyshev', label: 'Chebyshev (biggest gap)', short: 'Chebyshev' },
+          { value: 'minkowski', label: 'Minkowski (adjustable power)', short: 'Minkowski' },
+          { value: 'cosine', label: 'Cosine (direction only)', short: 'cosine' },
+        ],
+      },
+      {
+        key: 'p', label: 'Minkowski power (p)', values: [1, 1.25, 1.5, 2, 3, 4, 6, 10, 20], initial: 2,
+        advanced: true, showIf: (params) => params.metric === 'minkowski',
+      },
     ],
     speeds: {
       slow: { steps: 1, interval: 160 },
@@ -71,9 +88,11 @@ export const MODELS = {
       fast: { steps: 3, interval: 0 },
     },
     animationGrid: 60,
-    progress: (s) => (s.phase === 'memorise'
-      ? `Storing the training points: ${s.stored} of ${s.total} copied into memory`
-      : `Predicting: asking the neighbours, ${Math.round(s.reveal * 100)}% of the plot filled in`),
+    progress: (s) => {
+      if (s.phase === 'memorise') return `Storing the training points: ${s.stored} of ${s.total} copied into memory`;
+      if (s.phase === 'project') return 'Only direction counts: sliding a copy of each point onto a circle around the centre';
+      return `Predicting: asking the neighbours, ${Math.round(s.reveal * 100)}% of the plot filled in`;
+    },
     finished: (s) => `Finished: ${plural(s.total, 'point')} stored. Nothing was learned; every prediction is worked out by asking the neighbours.`,
   },
 

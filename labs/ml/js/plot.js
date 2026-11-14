@@ -5,7 +5,8 @@
 // simple shapes in data coordinates, so the plot never needs to know what
 // they mean.
 //   { kind: 'segment', from: [x1, x2], to: [x1, x2], style: 'link' or 'split' }
-//   { kind: 'circle', centre: [x1, x2], radius }
+//   { kind: 'path', points: [[x1, x2], ...], closed, style: 'reach' or 'guide' }
+//   { kind: 'marks', points: [[x1, x2, class], ...] }   small copies of points
 //   { kind: 'box', x1: [low, high], x2: [low, high], style: 'focus' or 'leaf' }
 //   { kind: 'rings', points: [[x1, x2], ...] }
 //
@@ -258,7 +259,7 @@ export function createPlot(canvas, handlers) {
     ctx.clip();
     const fade = view.stale ? 0.3 : 1;
     for (const item of view.overlay) {
-      const onTop = item.kind === 'circle' || item.kind === 'rings'
+      const onTop = item.kind === 'path' || item.kind === 'marks' || item.kind === 'rings'
         || (item.kind === 'segment' && item.style === 'link');
       if (onTop !== over) continue;
       ctx.globalAlpha = fade;
@@ -276,13 +277,33 @@ export function createPlot(canvas, handlers) {
         ctx.moveTo(ax, ay);
         ctx.lineTo(bx, by);
         ctx.stroke();
-      } else if (item.kind === 'circle') {
-        const [px, py] = toPx(item.centre[0], item.centre[1]);
-        ctx.setLineDash([6, 4]);
-        ctx.lineWidth = 1.6;
+      } else if (item.kind === 'path') {
+        // An outline of any shape: dashed for a neighbourhood's reach, thin
+        // and solid for a guide line.
+        if (item.style === 'guide') {
+          ctx.globalAlpha = fade * 0.55;
+          ctx.lineWidth = 1;
+        } else {
+          ctx.setLineDash([6, 4]);
+          ctx.lineWidth = 1.6;
+        }
         ctx.beginPath();
-        ctx.arc(px, py, (item.radius / 2) * span(), 0, Math.PI * 2);
+        item.points.forEach((point, i) => {
+          const [px, py] = toPx(point[0], point[1]);
+          if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+        });
+        if (item.closed) ctx.closePath();
         ctx.stroke();
+      } else if (item.kind === 'marks') {
+        ctx.lineWidth = 0.8;
+        ctx.strokeStyle = c.surface;
+        for (const [x1, x2, label] of item.points) {
+          const [px, py] = toPx(x1, x2);
+          shapePath(px, py, label, 2.7);
+          ctx.fillStyle = label === 1 ? c.blue : c.red;
+          ctx.fill();
+          ctx.stroke();
+        }
       } else if (item.kind === 'box') {
         const [left, top] = toPx(item.x1[0], item.x2[1]);
         const [right, bottom] = toPx(item.x1[1], item.x2[0]);

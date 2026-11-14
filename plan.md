@@ -123,7 +123,7 @@ Notes on what was built (where it differs from, or adds to, the brief):
 - Not built yet from section 3: the optimiser module (planned with the logistic regression options in step 1).
 
 Next, step 1: **more parameters on the existing models**
-- [ ] k-NN **distance metrics**, each visualised the way Euclidean is (the user sees the "neighbourhood shape" around a query point):
+- [x] k-NN **distance metrics**, each visualised the way Euclidean is (the user sees the "neighbourhood shape" around a query point):
   - Euclidean: a circle;
   - Manhattan: a diamond;
   - Chebyshev: a square;
@@ -140,6 +140,7 @@ Decided for step 1:
 - L1 uses a soft-threshold step after each update, so lasso sets weights to exactly zero.
 - SGD stops on a smoothed loss or after a fixed number of passes through the data, and has a batch size setting.
 - With a maximum number of leaves, the tree splits the group with the biggest impurity drop first (as scikit-learn does) instead of growing level by level.
+- Groundwork done: settings can be drop-downs, can appear only when relevant, and can sit behind "More settings"; the plot can draw outlines of any shape.
 - Build order, each piece committed and reviewed: groundwork (drop-down and conditional settings, any-shape outlines on the plot), k-NN distance metrics, tree and forest options, logistic regression penalties and optimisers, global options, sweep.
 
 Tabled for later (not in step 1):

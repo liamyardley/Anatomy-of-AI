@@ -510,49 +510,81 @@ function updateActivity() {
 
 // Build the controls for the current model's settings. Each has a hidden
 // "What does this do?" explanation, so people can experiment first.
+//
+// A setting is a slider by default. `type: 'toggle'` makes it an on/off
+// switch and `type: 'choice'` a drop-down list. Settings marked `advanced`
+// are tucked behind a "More settings" toggle, and one with `showIf` appears
+// only while that test passes (it is given the model's current settings).
 function buildParamControls() {
   els.params.innerHTML = '';
   const values = state.params[state.modelKey];
+  const more = document.createElement('details');
+  more.className = 'more-settings';
+  more.innerHTML = '<summary>More settings</summary><div class="params"></div>';
+  const refreshers = [];
+
   for (const def of spec().params) {
     const id = `param-${def.key}`;
     const stops = def.values;
-    const format = def.format || String;
     const toggle = def.type === 'toggle';
+    const choice = def.type === 'choice';
+    const format = def.format || String;
     const wrap = document.createElement('div');
     wrap.className = 'param';
-    const control = toggle
-      ? `<label class="switch" for="${id}">
+    let control;
+    if (toggle) {
+      control = `<label class="switch" for="${id}">
            <span class="switch-label">${def.label}</span>
            <input id="${id}" type="checkbox" role="switch">
            <output for="${id}"></output>
-         </label>`
-      : `<div class="field">
+         </label>`;
+    } else if (choice) {
+      control = `<div class="field">
+           <label for="${id}">${def.label}</label>
+           <select id="${id}">${def.options.map((o) => `<option value="${o.value}">${o.label}</option>`).join('')}</select>
+         </div>`;
+    } else {
+      control = `<div class="field">
            <label for="${id}">${def.label} <output for="${id}"></output></label>
            <input id="${id}" type="range"
              min="${stops ? 0 : def.min}" max="${stops ? stops.length - 1 : def.max}" step="${stops ? 1 : def.step}">
          </div>`;
+    }
     wrap.innerHTML = `${control}
       <details class="explain">
         <summary>What does this do?</summary>
         <p>${PARAM_NOTES[state.modelKey][def.key]}</p>
       </details>`;
-    const input = wrap.querySelector('input');
+    const input = wrap.querySelector('input, select');
     const output = wrap.querySelector('output');
     const show = (value) => {
+      if (choice) return;
       output.textContent = format(value);
       if (!toggle) input.setAttribute('aria-valuetext', format(value));
     };
     if (toggle) input.checked = values[def.key];
+    else if (choice) input.value = values[def.key];
     else input.value = stops ? stops.indexOf(values[def.key]) : values[def.key];
     show(values[def.key]);
-    input.addEventListener(toggle ? 'change' : 'input', () => {
+    input.addEventListener(toggle || choice ? 'change' : 'input', () => {
       if (toggle) values[def.key] = input.checked;
+      else if (choice) values[def.key] = input.value;
       else values[def.key] = stops ? stops[Number(input.value)] : Number(input.value);
       show(values[def.key]);
+      for (const refresh of refreshers) refresh();
       invalidate(); // changing a setting never refits: it waits for Train
     });
-    els.params.append(wrap);
+    if (def.showIf) refreshers.push(() => { wrap.hidden = !def.showIf(values); });
+    (def.advanced ? more.lastElementChild : els.params).append(wrap);
   }
+
+  if (more.lastElementChild.children.length) {
+    // Start open if any of the extra settings has been changed, so a
+    // setting that is in force is never out of sight.
+    more.open = spec().params.some((def) => def.advanced && values[def.key] !== def.initial);
+    els.params.append(more);
+  }
+  for (const refresh of refreshers) refresh();
   applyShowAll();
 }
 

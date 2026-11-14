@@ -345,3 +345,84 @@ test('Train all: one row per model, trained with its own settings', () => {
   const direct = fit(createForest({ trees: 5, bootstrap: true, seed: 11 }), data.train.X, data.train.y);
   assert.deepEqual(rows[2].scores.test.probabilities, data.test.X.map((x) => direct.predictProba(x)));
 });
+
+// ===== k-NN distance measures =====
+
+import { distanceFor, neighbourhoodOutline } from '../labs/ml/js/models/knn.js';
+
+const close = (a, b) => Math.abs(a - b) < 1e-9;
+
+test('distance measures: each gives the textbook answer', () => {
+  const a = [0, 0];
+  const b = [0.3, -0.4];
+  assert.ok(close(distanceFor('euclidean')(a, b), 0.5));
+  assert.ok(close(distanceFor('manhattan')(a, b), 0.7));
+  assert.ok(close(distanceFor('chebyshev')(a, b), 0.4));
+  // Minkowski joins them up: p = 1 is Manhattan, p = 2 Euclidean, large p nears Chebyshev.
+  assert.ok(close(distanceFor('minkowski', 1)(a, b), 0.7));
+  assert.ok(close(distanceFor('minkowski', 2)(a, b), 0.5));
+  assert.ok(Math.abs(distanceFor('minkowski', 60)(a, b) - 0.4) < 1e-3);
+  // Cosine: same direction 0, right angle 1, opposite 2, whatever the lengths.
+  const cosine = distanceFor('cosine');
+  assert.ok(close(cosine([0.1, 0.1], [0.9, 0.9]), 0));
+  assert.ok(close(cosine([0.5, 0], [0, 0.2]), 1));
+  assert.ok(close(cosine([0.5, 0], [-0.1, 0]), 2));
+  assert.equal(cosine([0, 0], [0.3, 0.3]), 1); // the centre has no direction
+});
+
+test('neighbourhood outline: every point on it is the same distance away', () => {
+  const centre = [0.2, -0.1];
+  for (const [metric, p] of [['euclidean', 2], ['manhattan', 2], ['chebyshev', 2], ['minkowski', 1.5], ['minkowski', 6]]) {
+    const distance = distanceFor(metric, p);
+    const outline = neighbourhoodOutline(centre, 0.3, metric, p);
+    for (const point of outline) assert.ok(Math.abs(distance(centre, point) - 0.3) < 1e-9, metric);
+  }
+  // Cosine: a wedge from the centre of the plot, whose two straight edges
+  // are exactly the cut-off distance from the query direction.
+  const wedge = neighbourhoodOutline(centre, 0.2, 'cosine');
+  assert.deepEqual(wedge[0], [0, 0]);
+  assert.ok(Math.abs(distanceFor('cosine')(centre, wedge[1]) - 0.2) < 1e-9);
+  assert.ok(Math.abs(distanceFor('cosine')(centre, wedge.at(-1)) - 0.2) < 1e-9);
+  assert.equal(neighbourhoodOutline(centre, 2, 'cosine'), null);
+});
+
+test('k-NN: the distance measure changes who the neighbours are', () => {
+  // Two stored points: one a short diagonal step away, one a slightly longer straight step.
+  const X = [[0.3, 0.3], [0.5, 0]];
+  const y = [1, 0];
+  const at = [0, 0];
+  assert.equal(fit(createKnn({ k: 1, metric: 'euclidean' }), X, y).predictProba(at), 1); // 0.42 against 0.5
+  assert.equal(fit(createKnn({ k: 1, metric: 'manhattan' }), X, y).predictProba(at), 0); // 0.6 against 0.5
+  assert.equal(fit(createKnn({ k: 1, metric: 'chebyshev' }), X, y).predictProba(at), 1); // 0.3 against 0.5
+});
+
+test('k-NN with cosine distance sees only direction', () => {
+  const { X, y } = lab('moons');
+  const model = fit(createKnn({ k: 5, metric: 'cosine' }), X, y);
+  // Two places in the same direction from the centre always get the same answer.
+  for (const [a, b] of [[0.2, 0.1], [-0.3, 0.4], [0.1, -0.5]]) {
+    assert.equal(model.predictProba([a, b]), model.predictProba([a * 1.8, b * 1.8]));
+  }
+  // So it cannot tell a disc from the ring around it.
+  const ring = lab('ring');
+  const euclid = accuracy(fit(createKnn({ k: 5 }), ring.X, ring.y), ring.X, ring.y);
+  const cosine = accuracy(fit(createKnn({ k: 5, metric: 'cosine' }), ring.X, ring.y), ring.X, ring.y);
+  assert.ok(euclid > 0.95);
+  assert.ok(cosine < 0.8);
+});
+
+test('k-NN with cosine distance: an extra training phase, and stepping equals finish', () => {
+  const { X, y } = lab('moons');
+  const stepped = createKnn({ k: 3, metric: 'cosine' });
+  const trainer = stepped.train(X, y);
+  const phases = new Set();
+  let result = trainer.step();
+  while (!result.done) { phases.add(result.snapshot.phase); result = trainer.step(); }
+  assert.deepEqual([...phases], ['memorise', 'project', 'predict']);
+  const whole = fit(createKnn({ k: 3, metric: 'cosine' }), X, y);
+  for (const x of probes) assert.equal(stepped.predictProba(x), whole.predictProba(x));
+  // The overlay holds a copy of every stored point, all on one circle.
+  const marks = whole.explain([0.3, 0.3]).overlay.find((shape) => shape.kind === 'marks');
+  assert.equal(marks.points.length, X.length);
+  for (const [a, b] of marks.points) assert.ok(Math.abs(Math.hypot(a, b) - 0.92) < 1e-9);
+});

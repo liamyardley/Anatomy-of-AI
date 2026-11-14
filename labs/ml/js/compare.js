@@ -6,9 +6,16 @@
 
 // A model's settings as a short line of text, for example
 // "Feature degree 2, Learning rate 3, Regularisation strength off".
+// A setting that is not in force (its showIf test fails) is left out.
 export function describeSettings(spec, params) {
+  const shown = (def) => {
+    const value = params[def.key];
+    if (def.options) return (def.options.find((o) => o.value === value) || { short: value }).short;
+    return (def.format || String)(value);
+  };
   return spec.params
-    .map((def) => `${def.label} ${(def.format || String)(params[def.key])}`)
+    .filter((def) => !def.showIf || def.showIf(params))
+    .map((def) => `${def.label} ${shown(def)}`)
     .join(', ');
 }
 
