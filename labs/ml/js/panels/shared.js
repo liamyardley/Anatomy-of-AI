@@ -43,3 +43,23 @@ export function verdict(p, threshold) {
   return `${fmt(p)} is ${blue ? 'at least' : 'below'} ${fmt(threshold)}, so the model predicts `
     + `<strong>${classLabel(blue ? 1 : 0)}</strong>.`;
 }
+
+// A link to one of the model's settings. Following it opens "More settings"
+// if the setting is tucked away there, scrolls to the control and focuses it.
+export const settingLink = (key, text) => `<a href="#param-${key}" data-setting="${key}">${text}</a>`;
+
+export function followSettingLinks(container) {
+  if (container.dataset.settingLinks) return; // the container outlives each panel
+  container.dataset.settingLinks = 'on';
+  container.addEventListener('click', (event) => {
+    const link = event.target.closest('a[data-setting]');
+    if (!link) return;
+    const control = document.getElementById(`param-${link.dataset.setting}`);
+    if (!control) return;
+    event.preventDefault();
+    const more = control.closest('details');
+    if (more) more.open = true;
+    control.scrollIntoView({ block: 'center' });
+    control.focus({ preventScroll: true });
+  });
+}

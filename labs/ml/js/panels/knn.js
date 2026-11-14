@@ -6,7 +6,9 @@
 
 import { MODEL_NOTES, COPY } from '../../content/notes.js';
 import { fmt, texNum, setValue, renderTex } from '../format.js';
-import { roles, sizeRows, setHtml, classLabel, verdict } from './shared.js';
+import {
+  roles, sizeRows, setHtml, classLabel, verdict, settingLink, followSettingLinks,
+} from './shared.js';
 
 const note = MODEL_NOTES.knn;
 
@@ -74,6 +76,7 @@ export function createKnnPanel({ intro, detail, wide }) {
   intro.innerHTML = `
       <h3 class="card-title">${note.title}</h3>
       <p class="blurb">${note.idea}</p>
+      <p class="blurb" data-role="using"></p>
       <div class="formula" data-role="distance"></div>
       <p class="small-print" data-role="metricNote"></p>
       <p class="small-print">${note.distanceKey}</p>
@@ -131,12 +134,15 @@ export function createKnnPanel({ intro, detail, wide }) {
     </div>`;
 
   const el = roles(intro, detail, wide);
+  followSettingLinks(intro);
   renderTex(el.share, 'p = \\frac{\\text{number of blue neighbours}}{k}', { display: true });
 
   let shownMemory = null; // the memory array and length last drawn in the table
 
   function update(info, { threshold, flash = true }) {
     // The distance measure in use
+    const link = settingLink('metric', `<strong>${note.metricNames[info.metric]}</strong>`);
+    setHtml(el.using, info.metric === 'euclidean' ? note.usingDefault(link) : note.usingChosen(link));
     renderTex(el.distance, distanceTex(info.metric, info.power), { display: true });
     setHtml(el.metricNote, note.metrics[info.metric]);
 

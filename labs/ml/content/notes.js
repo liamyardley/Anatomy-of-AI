@@ -171,6 +171,17 @@ export const MODEL_NOTES = {
     memoryUntrained: 'The memory is empty. Press Train to watch the training points being copied in.',
     filling: 'Once the points are stored, the plot fills in from the top. Each patch of the plot asks its own k nearest neighbours which colour it should be.',
     picture: 'The stored points nearest to your query point, lined up by distance. Everything inside the shaded band is one of the k nearest and gets a vote; everything beyond it is ignored. On the plot, the same k points are joined to the query point, and the dashed outline reaches exactly as far as the furthest of them. Its shape is the shape of "equally far away" under the chosen distance measure.',
+    // The sentence above the formula, saying which distance measure is in
+    // use. The name becomes a link to the setting.
+    metricNames: {
+      euclidean: 'Euclidean distance',
+      manhattan: 'Manhattan distance',
+      chebyshev: 'Chebyshev distance',
+      minkowski: 'Minkowski distance',
+      cosine: 'cosine distance',
+    },
+    usingDefault: (link) => `This model is using ${link}, the usual choice. Its formula is:`,
+    usingChosen: (link) => `You have chosen to use ${link}. Its formula is:`,
     // One line per distance measure, shown under its formula.
     metrics: {
       euclidean: 'Euclidean distance is the straight-line distance. Everything equally far from a point lies on a <strong>circle</strong>.',
