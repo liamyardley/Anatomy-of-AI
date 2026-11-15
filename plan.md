@@ -87,6 +87,8 @@ Shape of every project: the question, exploring the data, a baseline, the models
 
 Coursework informs the lessons and field notes only. No assignment solutions are published, adapted or not. This matters especially for CS50 AI projects (such as Minesweeper), whose policy asks students not to post solutions publicly. Every lab and project uses its own problems and datasets, and its code is written fresh.
 
+**Sources of ideas.** The CS50 AI syllabus (https://cs50.harvard.edu/extension/ai/2025/fall/) is a useful map of topics: search, knowledge, uncertainty, optimisation, learning, neural networks, language. The topics and the standard ways of picturing them are common across textbooks and courses, so they can inform what a lab covers. Its projects, starter code and solutions are not reused.
+
 ## 5. Sections by region of the diagram
 
 ### 5.1 Artificial intelligence (outside machine learning)
@@ -120,28 +122,28 @@ Notes on what was built (where it differs from, or adds to, the brief):
 - Noisy islands does not single out the random forest: at default settings logistic regression and k-NN do as well. The activity text says so. Open: change the generator, or leave it.
 - The engine (plot, training controls, RNG, model interface) lives in `labs/ml/js/` for now, not in `assets/`. It moves when a second lab needs it.
 - Still to do from the brief's checks: try it with reduced motion, on a real touch device, and with a screen reader.
-- Not built yet from section 3: the optimiser module (planned with the logistic regression options in step 1).
+- Not built yet from section 3: the optimiser module (planned with Lab 2, below).
 
-Next, step 1: **more parameters on the existing models**
+Step 1: **more parameters on the existing models** (done, apart from one tidy-up)
+
+The lab is about what each model does to classify the data, so its settings are the ones that change what the model is and the shape of its boundary. Settings about how a model is fitted, and how settings are chosen, move out to Lab 2 (see "The split" below).
 - [x] k-NN **distance metrics**, each visualised the way Euclidean is (the user sees the "neighbourhood shape" around a query point):
   - Euclidean: a circle;
   - Manhattan: a diamond;
   - Chebyshev: a square;
   - **Minkowski with a p slider**, morphing the shape smoothly from diamond (p = 1) to circle (p = 2) towards square (large p);
   - **Cosine:** ignores how far a point is from the origin and compares only direction. Visualise it by sliding every point onto the unit circle (animated), then finding neighbours by angle, so the neighbourhood is a wedge from the origin and the regions become slices radiating outwards. The Ring dataset becomes impossible (inner and outer points share directions), which is the lesson. This also sets up the word vectors lab, where similar words cluster on a sphere by angle.
-- [ ] Logistic regression: L1, L2 or elastic net penalty; choice of optimiser (from the shared optimiser module).
 - [x] Decision tree: Gini or entropy; minimum samples to split; maximum number of leaves; **cost-complexity pruning** (tree regularisation).
 - [x] Random forest: minimum samples per leaf; sample size per tree.
-- [ ] Global: train/test split ratio; **k-fold cross-validation** with the folds shown on the plot.
-- [ ] **Sweep:** train across a range of one parameter and plot training and test accuracy against it (the bias-variance U-curve).
+- [ ] Tidy-up: move logistic regression's **learning rate** behind "More settings", and add a link from it to Lab 2 once that exists. Regularisation strength (L2) stays on show, because the "high degree overfits, regularisation pulls it back" lesson needs it.
+
+Moved to Lab 2 (were in step 1): L1 and elastic net penalties, the choice of optimiser, k-fold cross-validation, the train/test split ratio, and the sweep.
 
 Decided for step 1:
 - The settings each model has today stay on show; the new ones sit behind a **"More settings"** toggle, so the lab stays approachable.
-- L1 uses a soft-threshold step after each update, so lasso sets weights to exactly zero.
-- SGD stops on a smoothed loss or after a fixed number of passes through the data, and has a batch size setting.
 - With a maximum number of leaves, the tree splits the group with the biggest impurity drop first (as scikit-learn does) instead of growing level by level.
 - Groundwork done: settings can be drop-downs, can appear only when relevant, and can sit behind "More settings"; the plot can draw outlines of any shape.
-- Build order, each piece committed and reviewed: groundwork (drop-down and conditional settings, any-shape outlines on the plot), k-NN distance metrics, tree and forest options, logistic regression penalties and optimisers, global options, sweep.
+- The explanation for k-NN and the tree says which distance or impurity measure is in use, with a link to the setting.
 
 Tabled for later (not in step 1):
 - A **"stretch x₁ by 10"** switch on the data, plus a **scale features** option: shows k-NN (and later SVM and neural networks) breaking on unscaled data while trees are unaffected.
@@ -155,13 +157,35 @@ Next, step 2: **more models**, in this order
 
 Next, step 3: **regression mode** (one input, a continuous output, click to place points): polynomial regression, k-NN regression, a tree as a step function, a forest as smoothed steps. Bridge into the neural network lab.
 
-**Lab 2: Optimisation and regularisation** (linked from Deep learning too)
-- [ ] Loss landscapes: click a start point on a contour map; race gradient descent, SGD, momentum, RMSProp and Adam on a bowl, a long narrow valley, a saddle and a surface with several dips; learning rate from crawling to blowing up.
-- [ ] Batch size: full batch, mini-batch and single-point updates (smooth vs noisy paths).
-- [ ] The real loss surface of the Lab 1 logistic regression: "this is what Train was doing".
-- [ ] Regularisation geometry: the L2 circle and L1 diamond meeting the loss contours, and why lasso sets weights to exactly zero.
-- [ ] Coefficient paths as λ grows (ridge shrinks, lasso selects, elastic net compromises).
-- [ ] Early stopping as regularisation; the bias-variance trade-off with a polynomial and a λ slider.
+**The split between Lab 1 and Lab 2**
+
+- **Lab 1 (classification): what a model does.** Settings that change the model itself and the shape of its boundary: k and the distance measure, depth and pruning, feature degree, number of trees.
+- **Lab 2 (training): how a model gets there.** Two topics, which may or may not end up on one page:
+  1. **Fitting: how a model finds its numbers.** Gradient descent, learning rate, optimisers, batch size, L1 and L2. This applies to models with weights (logistic regression now, neural networks later). Trees and k-NN do not train this way, and the lab says so.
+  2. **Choosing: how settings are picked honestly.** Train/test split, k-fold cross-validation, sweeps, grid search, the bias-variance curve. This applies to every model.
+- **Decision deferred:** build Fitting first as its own page, look at it, and only then decide whether Choosing joins it or becomes a separate lab.
+
+**Lab 2: How a model finds its numbers (fitting)** at `labs/training/` (linked from Deep learning too). Next to be built.
+
+Built in phases, each committed and reviewed, as Lab 1 was:
+- [ ] Phase 0, shared engine: move what both labs need (seeded RNG, number and formula helpers, the training engine and its controls, the logistic regression model) from `labs/ml/js/` into `assets/js/`, with Lab 1 still passing its tests and working as before. Add the **optimiser module** there: gradient descent, momentum, RMSProp and Adam behind one small interface, pure and unit tested.
+- [ ] Phase 1, one weight: a tiny dataset and a model with a single number to find. Drag the weight by hand and watch the loss change; try to find the lowest point before pressing Train. Then gradient descent takes steps down the curve. The learning rate goes from crawling, to overshooting, to blowing up.
+- [ ] Phase 2, two weights: the loss as a contour map. Click a start point and watch the path. Surfaces: a bowl, a long narrow valley, a saddle, and one with several dips (where the start point decides the answer).
+- [ ] Phase 3, optimisers and batch size: race gradient descent, momentum, RMSProp and Adam from the same start. Full batch, mini-batch and single-point updates (smooth against noisy paths).
+- [ ] Phase 4, the real thing: the true loss surface of a logistic regression on a Lab 1 dataset, with the path on the contour map and the boundary moving on the data plot side by side: "this is what Train was doing".
+- [ ] Phase 5, regularisation: the L2 circle and L1 diamond meeting the loss contours, a strength slider, and why L1 (lasso) sets weights to exactly zero while L2 (ridge) only shrinks them. Coefficient paths as the strength grows (ridge shrinks, lasso selects, elastic net compromises).
+- [ ] Phase 6: predict-observe-explain activities, field notes, accessibility and mobile passes, home page link, README.
+
+Decided for Lab 2:
+- L1 uses a soft-threshold step after each update, so lasso sets weights to exactly zero.
+- Mini-batch and single-point training stop on a smoothed loss or after a fixed number of passes through the data, and have a batch size setting.
+
+**Choosing settings honestly** (where it lives is undecided: part of Lab 2 or its own lab)
+- [ ] Train/test split ratio.
+- [ ] **k-fold cross-validation** with the folds shown on the plot.
+- [ ] **Sweep:** train across a range of one setting and plot training and test accuracy against it (the bias-variance U-curve).
+- [ ] Grid search over two settings at once, shown as a heat map.
+- [ ] Early stopping as regularisation; the bias-variance trade-off with a polynomial and a strength slider.
 
 **Lab 3: Finding groups without labels** (unsupervised learning)
 - [ ] Reuses the Lab 1 plot and datasets with the colours removed: "can the algorithm recover the groups?", then reveal the true colours and compare.
@@ -225,17 +249,19 @@ Next, step 3: **regression mode** (one input, a continuous output, click to plac
 ## 6. Roadmap
 
 1. ML Lab 1, phases 1 to 6 (`ML-Lab-brief.md`): done
-2. ML Lab 1, step 1: more parameters, including distance metrics (next)
-3. ML Lab 1, step 2: more models
-4. **Code-along prototype** as its own page (k-NN first): tests the most novel idea before many more labs are built around it
-5. ML Lab 2: optimisation and regularisation
-6. ML Lab 3: unsupervised
-7. Deep learning: neural network lab
-8. First Colab project (Titanic) and the `datasets/` folder
-9. Remaining regions, ordered by interest
+2. ML Lab 1, step 1: more parameters, including distance metrics: done, apart from one tidy-up
+3. **ML Lab 2, fitting** (how a model finds its numbers): next
+4. Decide where "choosing settings honestly" lives, then build it
+5. ML Lab 1, step 2: more models
+6. **Code-along prototype** as its own page (k-NN first): tests the most novel idea before many more labs are built around it
+7. ML Lab 3: unsupervised
+8. Deep learning: neural network lab
+9. First Colab project (Titanic) and the `datasets/` folder
+10. Remaining regions, ordered by interest
 
 ## 7. Open questions
 
+- Does "choosing settings honestly" (cross-validation, sweeps, grid search) belong in Lab 2 with fitting, or in a lab of its own? Decide after the fitting lab is built.
 - Pyodide or another approach for running Python in the code-along: decide after the prototype.
 - Runtime dependencies for the CV and LLM labs (TensorFlow.js, ONNX Runtime Web, transformers.js).
 - Whether the home page needs a course-style route through the labs as well as the map.
