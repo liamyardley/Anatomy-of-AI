@@ -95,6 +95,7 @@ code {
   background: var(--bg); border: 1px dashed var(--border); color: var(--ink); font-weight: 600;
 }
 .small-print { margin: 10px 0 0; font-size: .82rem; color: var(--muted); }
+.small-print a { color: var(--ink); font-weight: 600; text-decoration-color: var(--ml-line); text-underline-offset: 3px; }
 .readout {
   margin: 0; padding: 10px 12px; border-radius: 10px; font-size: .92rem;
   background: var(--bg); border: 1px solid var(--border);

@@ -25,3 +25,22 @@
 /* A run that no longer matches the settings is faded until Train is pressed. */
 .fitted-stale { opacity: .4; }
 .train-message[data-status="stale"] { border-style: dashed; border-color: var(--cv-line); }
+
+/* --- Part 2: the contour map --- */
+.surfaces { margin-top: 10px; flex-wrap: wrap; }
+.map { position: relative; aspect-ratio: 1; cursor: crosshair; border-radius: 8px; }
+.map:focus-visible { outline: 2px solid var(--ml-line); outline-offset: 3px; }
+/* The canvas sits exactly over the plotting area of the SVG (36, 8, 316 of 360). */
+.map canvas { position: absolute; left: 10%; top: 2.2222%; width: 87.7778%; height: 87.7778%; }
+.map #twoOverlay { position: absolute; inset: 0; }
+.map svg { width: 100%; height: 100%; }
+.chart .map-frame { fill: none; stroke: var(--border); stroke-width: 1; }
+.chart .ghost { fill: none; stroke: var(--ink); stroke-width: 1.2; opacity: .4; stroke-linejoin: round; }
+.chart .ghost-end { fill: var(--ink); opacity: .55; }
+.chart .start-mark { fill: none; stroke: var(--ink); stroke-width: 2.2; stroke-linecap: round; }
+.chart .arrow-head { fill: var(--ink); }
+.map .path { stroke: var(--ink); }
+.map .path-dot { fill: var(--ink); }
+.map .here { fill: var(--cv-fill); }
+#twoClearBtn { margin-top: 4px; }
+.split .facts { flex-wrap: wrap; margin: 12px 0 14px; }

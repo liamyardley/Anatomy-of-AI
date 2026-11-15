@@ -6,6 +6,7 @@ import { createOptimiser, OPTIMISERS } from '../assets/js/optimisers.js';
 import {
   makeLineData, loss, gradient, bestWeight, createDescent,
 } from '../labs/training/js/oneweight.js';
+import { SURFACES, RANGE, spotAt, createDescent2 } from '../labs/training/js/twoweights.js';
 
 const close = (a, b, tolerance = 1e-9) => Math.abs(a - b) < tolerance;
 
@@ -152,4 +153,96 @@ test('gradient descent: stepping to the end equals finish, and the history adds 
     if (i > 0) assert.ok(close(entry.w - stepped.history[i - 1].w, entry.move));
     assert.ok(close(entry.loss, loss(entry.w, points)));
   });
+});
+
+// ===== two weights =====
+
+const run2 = (name, start, learningRate) => {
+  const run = createDescent2({ surface: SURFACES[name], start, learningRate });
+  return { end: run.finish().snapshot, history: run.history };
+};
+
+test('surfaces: each gradient is the slope of its loss, and is zero at every flat spot', () => {
+  for (const [name, surface] of Object.entries(SURFACES)) {
+    for (const [a, b] of [[-1.5, 0.3], [0.4, -1.2], [1.7, 1.1], [0, 0.5]]) {
+      const [ga, gb] = surface.gradient(a, b);
+      const ma = (surface.loss(a + 1e-6, b) - surface.loss(a - 1e-6, b)) / 2e-6;
+      const mb = (surface.loss(a, b + 1e-6) - surface.loss(a, b - 1e-6)) / 2e-6;
+      assert.ok(close(ga, ma, 1e-5) && close(gb, mb, 1e-5), `${name} at ${a}, ${b}`);
+    }
+    for (const spot of surface.spots) {
+      const [ga, gb] = surface.gradient(spot.at[0], spot.at[1]);
+      assert.ok(Math.hypot(ga, gb) < 1e-6, `${name} spot ${spot.at}`);
+      assert.ok(Math.abs(spot.at[0]) < RANGE && Math.abs(spot.at[1]) < RANGE);
+    }
+  }
+});
+
+test('several dips: three separate dips, one of them the lowest', () => {
+  const { spots, loss: f } = SURFACES.dips;
+  assert.equal(spots.length, 3);
+  assert.equal(spots.filter((s) => s.kind === 'lowest').length, 1);
+  for (let i = 0; i < 3; i++) {
+    for (let j = i + 1; j < 3; j++) {
+      assert.ok(Math.hypot(spots[i].at[0] - spots[j].at[0], spots[i].at[1] - spots[j].at[1]) > 1);
+    }
+    // A real dip: lower than the ground just around it.
+    const [a, b] = spots[i].at;
+    for (const [da, db] of [[0.1, 0], [-0.1, 0], [0, 0.1], [0, -0.1]]) assert.ok(f(a, b) < f(a + da, b + db));
+  }
+});
+
+test('bowl: a learning rate of 1 lands on the bottom in one step, from anywhere', () => {
+  const { end, history } = run2('bowl', [1.6, -1.2], 1);
+  assert.ok(Math.hypot(...history[1].w) < 1e-12);
+  assert.equal(end.outcome, 'settled');
+  assert.equal(end.spot.kind, 'lowest');
+});
+
+test('narrow valley: the steep sides limit the rate, the flat floor makes it slow', () => {
+  // Above 1 the steep direction blows up.
+  assert.equal(run2('valley', [1.5, 1], 1.5).end.outcome, 'diverged');
+  // A safe small rate is still creeping along the floor when the steps run out.
+  const slow = run2('valley', [1.8, 1], 0.1).end;
+  assert.equal(slow.outcome, 'limit');
+  assert.ok(Math.abs(slow.w[1]) < 1e-6 && slow.w[0] > 0.1);
+  // Close to the limit it zigzags across the valley but gets there.
+  const zigzag = run2('valley', [1.8, 1], 0.9);
+  assert.equal(zigzag.end.outcome, 'settled');
+  assert.ok(zigzag.history[1].w[1] < 0 && zigzag.history[2].w[1] > 0);
+});
+
+test('saddle: a start on the ridge stops on the saddle; a start just off it reaches a dip', () => {
+  const stuck = run2('saddle', [1.5, 0], 0.3).end;
+  assert.equal(stuck.outcome, 'settled');
+  assert.equal(stuck.spot.kind, 'saddle');
+  const up = run2('saddle', [1.5, 0.05], 0.3).end;
+  assert.equal(up.spot.kind, 'lowest');
+  assert.ok(close(up.w[1], 1, 1e-2));
+  const down = run2('saddle', [1.5, -0.05], 0.3).end;
+  assert.ok(close(down.w[1], -1, 1e-2));
+});
+
+test('several dips: the start decides which dip gradient descent finds', () => {
+  const kinds = new Set();
+  const ends = new Set();
+  for (const start of [[-1.5, -1.5], [1.5, 1], [-1, 1.7], [1.8, -1.5], [-1.8, 0.4]]) {
+    const { end } = run2('dips', start, 0.2);
+    assert.equal(end.outcome, 'settled', `${start}`);
+    assert.ok(end.spot, `${start} ended at ${end.w}`);
+    kinds.add(end.spot.kind);
+    ends.add(end.spot.at.join());
+  }
+  assert.ok(kinds.has('lowest') && kinds.has('dip'));
+  assert.equal(ends.size, 3);
+});
+
+test('two weights: stepping to the end equals finish, and spotAt only fires near a spot', () => {
+  const surface = SURFACES.dips;
+  const stepped = createDescent2({ surface, start: [0.2, -1.6], learningRate: 0.2 });
+  let result = stepped.step();
+  while (!result.done) result = stepped.step();
+  assert.deepEqual(createDescent2({ surface, start: [0.2, -1.6], learningRate: 0.2 }).finish().snapshot, result.snapshot);
+  assert.equal(spotAt(SURFACES.bowl, [0.5, 0.5]), null);
+  assert.equal(spotAt(SURFACES.bowl, [0.01, -0.02]).kind, 'lowest');
 });

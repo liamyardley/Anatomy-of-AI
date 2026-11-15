@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="A hands-on lab showing how a machine learning model finds its numbers: drag a weight yourself, then watch gradient descent step downhill to the answer.">
+<meta name="description" content="A hands-on lab showing how a machine learning model finds its numbers: drag a weight yourself, then watch gradient descent step downhill to the answer, first along a curve and then across a contour map.">
 <title>How a model finds its numbers | Anatomy of AI</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Karla:ital,wght@0,400;0,600;0,700;1,400&display=swap">
@@ -25,7 +25,7 @@
   <div class="intro">
     <h1>How a model finds its numbers</h1>
     <p class="lede">In the <a href="../ml/index.html">Machine Learning Lab</a> you pressed <strong>Train</strong> and a model found its own numbers. This lab slows that moment down to show what is happening.</p>
-    <p class="lede">It starts with the smallest case there is: a model with <strong>one number to find</strong>. Try to find it yourself first, then watch the method a computer uses.</p>
+    <p class="lede">Part 1 is the smallest case there is: a model with <strong>one number to find</strong>. Try to find it yourself first, then watch the method a computer uses. Part 2 adds a second number, and the loss becomes a landscape to walk down.</p>
   </div>
 
   <!-- Shown until the scripts load. They cannot load when the page is opened
@@ -157,6 +157,100 @@
       </div>
       <p class="small-print" id="runsEmpty"></p>
       <p class="note plain" id="linkNote"></p>
+    </div>
+  </section>
+  <!-- Part 2: two weights -->
+  <section class="card block" aria-labelledby="twoHeading">
+    <header class="block-head">
+      <p class="crumb">Part 2</p>
+      <h2 class="block-title" id="twoHeading">Two numbers to find</h2>
+      <p class="block-sub">With two weights the loss becomes a landscape. Choose a start and watch gradient descent walk downhill.</p>
+    </header>
+
+    <div class="block-body">
+      <div class="split">
+        <div>
+          <p class="crumb">The loss as a map</p>
+          <h3 class="card-title">A landscape with two weights</h3>
+          <fieldset class="segmented surfaces">
+            <legend class="visually-hidden">Loss surface</legend>
+            <label><input type="radio" name="twoSurface" value="bowl" checked><span>Bowl</span></label>
+            <label><input type="radio" name="twoSurface" value="valley"><span>Narrow valley</span></label>
+            <label><input type="radio" name="twoSurface" value="saddle"><span>Saddle</span></label>
+            <label><input type="radio" name="twoSurface" value="dips"><span>Several dips</span></label>
+          </fieldset>
+          <div class="map chart" id="twoMap" tabindex="0" role="group" aria-label="Loss map. Click, or use the arrow keys, to choose where training starts.">
+            <canvas id="twoCanvas" width="640" height="640" aria-hidden="true"></canvas>
+            <div id="twoOverlay"></div>
+          </div>
+          <p class="blurb" id="twoSurfaceNote"></p>
+          <p class="blurb" id="twoMapNote"></p>
+          <p class="small-print" id="twoKeysNote"></p>
+        </div>
+
+        <div>
+          <p class="crumb">Let the model find it</p>
+          <h3 class="card-title">Gradient descent on the map</h3>
+          <p class="blurb" id="twoDescentNote"></p>
+
+          <div class="train-bar" role="group" aria-label="Training on the map">
+            <button type="button" id="twoTrainBtn" class="btn primary">Train</button>
+            <button type="button" id="twoPauseBtn" class="btn" disabled>Pause</button>
+            <button type="button" id="twoStepBtn" class="btn">Step</button>
+            <button type="button" id="twoSkipBtn" class="btn" disabled>Skip</button>
+            <fieldset class="segmented speed">
+              <legend class="visually-hidden">Training speed</legend>
+              <label><input type="radio" name="twoSpeed" value="slow"><span>Slow</span></label>
+              <label><input type="radio" name="twoSpeed" value="normal" checked><span>Normal</span></label>
+              <label><input type="radio" name="twoSpeed" value="fast"><span>Fast</span></label>
+            </fieldset>
+          </div>
+          <p class="train-message" id="twoTrainMessage"></p>
+          <p class="visually-hidden" id="twoAnnounce" aria-live="polite"></p>
+
+          <div class="facts">
+            <div><span class="fact-label">Start</span><span class="num" id="twoStartOut"></span></div>
+            <div><span class="fact-label">Weights now</span><span class="num" id="twoWeightsOut"></span></div>
+            <div><span class="fact-label">Loss</span><span class="num" id="twoLossOut"></span></div>
+          </div>
+
+          <div class="params">
+            <div class="param">
+              <div class="field">
+                <label for="twoRateRange">Learning rate <output id="twoRateOut" for="twoRateRange"></output></label>
+                <input id="twoRateRange" type="range" min="0" max="9" step="1">
+              </div>
+              <details class="explain">
+                <summary>What does this do?</summary>
+                <p id="twoRateNote"></p>
+              </details>
+            </div>
+          </div>
+
+          <p class="crumb sub">The mathematics</p>
+          <div class="formula" id="twoLossTex"></div>
+          <div class="formula" id="twoUpdateTex"></div>
+          <p class="small-print" id="twoGradientKey"></p>
+          <p class="crumb sub">The next step from here</p>
+          <div class="formula fitted" id="twoNextTex"></div>
+        </div>
+      </div>
+
+      <hr class="rule spaced">
+
+      <p class="crumb">Does the start matter?</p>
+      <h3 class="card-title">Runs on this surface</h3>
+      <p class="blurb" id="twoRunsNote"></p>
+      <button type="button" id="twoClearBtn" class="btn">Clear earlier runs</button>
+      <div class="table-scroll" id="twoRunsScroll" tabindex="0" role="group" aria-label="Table of finished runs on this surface">
+        <table class="data-table">
+          <thead>
+            <tr><th scope="col">Run</th><th scope="col" class="num">Started at</th><th scope="col" class="num">Learning rate</th><th scope="col" class="num">Steps</th><th scope="col" class="num">Ended at</th><th scope="col" class="num">Loss</th><th scope="col">What happened</th></tr>
+          </thead>
+          <tbody id="twoRunRows"></tbody>
+        </table>
+      </div>
+      <p class="small-print" id="twoRunsEmpty"></p>
     </div>
   </section>
 </main>
