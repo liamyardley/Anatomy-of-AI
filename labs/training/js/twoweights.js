@@ -168,3 +168,84 @@ export function createDescent2({
     get outcome() { return outcome; },
   };
 }
+
+// A race: several optimisers from the same start on the same surface, all
+// taking one step each time step() is called.
+//
+//   runners  [{ name, learningRate }]   name is a key of OPTIMISERS
+//
+// A runner has arrived once it has spent three steps in a row within
+// `near` of a flat spot. (Asking for the steps to become tiny, as
+// createDescent2 does, would be unfair here: RMSProp keeps taking steps of
+// about one learning rate, so it hovers around the bottom without stopping.)
+//
+// A snapshot is { step, runners } where each runner is
+// { name, learningRate, w, loss, steps, outcome, spot, history }.
+// `outcome` is null while going, then 'arrived' (see `spot` for where),
+// 'diverged' or 'limit' (out of steps). `history` is the list of points
+// visited, [a, b] each.
+export function createRace({
+  surface, start = [0, 0], runners, maxSteps = 300, near = 0.05,
+}) {
+  let count = 0;
+  const state = runners.map(({ name, learningRate }) => ({
+    name,
+    learningRate,
+    rule: createOptimiser(name, { learningRate }),
+    w: [...start],
+    steps: 0,
+    close: 0, // steps in a row spent near a flat spot
+    outcome: null,
+    spot: null,
+    history: [[...start]],
+  }));
+
+  function advance(r) {
+    r.w = r.rule.step(r.w, surface.gradient(r.w[0], r.w[1]));
+    r.steps += 1;
+    r.history.push([...r.w]);
+    const here = surface.loss(r.w[0], r.w[1]);
+    if (!Number.isFinite(here) || Math.abs(r.w[0]) > 1e3 || Math.abs(r.w[1]) > 1e3) {
+      r.outcome = 'diverged';
+      return;
+    }
+    const spot = spotAt(surface, r.w, near);
+    r.close = spot ? r.close + 1 : 0;
+    if (r.close >= 3) {
+      r.outcome = 'arrived';
+      r.spot = spot;
+      r.steps -= 2; // it arrived when it first came within reach
+    } else if (r.steps >= maxSteps) {
+      r.outcome = 'limit';
+    }
+  }
+
+  const snapshot = () => ({
+    step: count,
+    runners: state.map((r) => ({
+      name: r.name,
+      learningRate: r.learningRate,
+      w: [...r.w],
+      loss: surface.loss(r.w[0], r.w[1]),
+      steps: r.steps,
+      outcome: r.outcome,
+      spot: r.spot,
+      history: r.history,
+    })),
+  });
+
+  function step() {
+    if (state.every((r) => r.outcome)) return { done: true, snapshot: snapshot() };
+    count += 1;
+    for (const r of state) if (!r.outcome) advance(r);
+    return { done: state.every((r) => r.outcome), snapshot: snapshot() };
+  }
+
+  function finish() {
+    let result = step();
+    while (!result.done) result = step();
+    return result;
+  }
+
+  return { step, finish, snapshot };
+}

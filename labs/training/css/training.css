@@ -44,3 +44,31 @@
 .map .here { fill: var(--cv-fill); }
 #twoClearBtn { margin-top: 4px; }
 .split .facts { flex-wrap: wrap; margin: 12px 0 14px; }
+
+/* --- Part 3: the race and batch sizes --- */
+/* Each run has a colour, a line style and a head shape. */
+.chart .lane, .swatch .lane { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.chart .lane.thin { stroke-width: 1.3; }
+.run-gd { --run: var(--ink); }
+.run-momentum { --run: var(--cv-line); }
+.run-rmsprop { --run: var(--nlp-line); }
+.run-adam { --run: var(--gen-line); }
+.run-start { --run: var(--muted); }
+.lane.run-gd, .lane.run-momentum, .lane.run-rmsprop, .lane.run-adam, .lane.run-start { stroke: var(--run); }
+.lane.run-momentum { stroke-dasharray: 7 3; }
+.lane.run-rmsprop { stroke-dasharray: 2 3.5; }
+.lane.run-adam { stroke-dasharray: 9 3 2 3; }
+.lane.run-start { stroke-dasharray: 3 4; }
+.lane.thin.run-momentum, .lane.thin.run-adam { stroke-dasharray: none; }
+.chart .lane.thin.run-adam { stroke-width: .9; opacity: .75; }
+.chart .lane.thin.run-gd { stroke-width: 2; }
+.head { fill: var(--run); stroke: var(--surface); stroke-width: 1.2; }
+.swatch { width: 34px; height: 14px; vertical-align: -2px; margin-right: 2px; overflow: visible; }
+.chart .best-mark { fill: none; stroke: var(--ink); stroke-width: 2.4; stroke-linecap: round; }
+.runner .check { margin: 0 0 6px; }
+.runner + .runner { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border); }
+.legend { display: flex; flex-direction: column; gap: 4px; margin: 10px 0 0; font-size: .85rem; color: var(--muted); }
+.blurb.wide { max-width: 78ch; }
+.split.spaced { margin-top: 16px; }
+#raceScroll, #batchScroll { margin-top: 18px; }
+.data-table th .swatch { margin-right: 6px; }

@@ -25,7 +25,7 @@
   <div class="intro">
     <h1>How a model finds its numbers</h1>
     <p class="lede">In the <a href="../ml/index.html">Machine Learning Lab</a> you pressed <strong>Train</strong> and a model found its own numbers. This lab slows that moment down to show what is happening.</p>
-    <p class="lede">Part 1 is the smallest case there is: a model with <strong>one number to find</strong>. Try to find it yourself first, then watch the method a computer uses. Part 2 adds a second number, and the loss becomes a landscape to walk down.</p>
+    <p class="lede">Part 1 is the smallest case there is: a model with <strong>one number to find</strong>. Try to find it yourself first, then watch the method a computer uses. Part 2 adds a second number, and the loss becomes a landscape to walk down. Part 3 tries cleverer ways of walking.</p>
   </div>
 
   <!-- Shown until the scripts load. They cannot load when the page is opened
@@ -251,6 +251,149 @@
         </table>
       </div>
       <p class="small-print" id="twoRunsEmpty"></p>
+    </div>
+  </section>
+
+  <!-- Part 3: optimisers and batch size -->
+  <section class="card block" aria-labelledby="threeHeading">
+    <header class="block-head">
+      <p class="crumb">Part 3</p>
+      <h2 class="block-title" id="threeHeading">Better ways to step</h2>
+      <p class="block-sub">Cleverer rules for turning a gradient into a step, and what happens when each step looks at only some of the data.</p>
+    </header>
+
+    <div class="block-body">
+      <div class="split">
+        <div>
+          <p class="crumb">The race</p>
+          <h3 class="card-title">Four optimisers, one start</h3>
+          <fieldset class="segmented surfaces">
+            <legend class="visually-hidden">Loss surface for the race</legend>
+            <label><input type="radio" name="raceSurface" value="bowl"><span>Bowl</span></label>
+            <label><input type="radio" name="raceSurface" value="valley" checked><span>Narrow valley</span></label>
+            <label><input type="radio" name="raceSurface" value="saddle"><span>Saddle</span></label>
+            <label><input type="radio" name="raceSurface" value="dips"><span>Several dips</span></label>
+          </fieldset>
+          <div class="map chart" id="raceMap" tabindex="0" role="group" aria-label="Loss map for the race. Click, or use the arrow keys, to choose where the optimisers start.">
+            <canvas id="raceCanvas" width="640" height="640" aria-hidden="true"></canvas>
+            <div id="raceOverlay"></div>
+          </div>
+          <p class="blurb" id="raceSurfaceNote"></p>
+          <p class="small-print" id="raceMapNote"></p>
+        </div>
+
+        <div>
+          <p class="crumb">Ways of stepping</p>
+          <h3 class="card-title">The optimisers</h3>
+          <p class="blurb" id="raceNote"></p>
+
+          <div class="train-bar" role="group" aria-label="The optimiser race">
+            <button type="button" id="raceTrainBtn" class="btn primary">Train</button>
+            <button type="button" id="racePauseBtn" class="btn" disabled>Pause</button>
+            <button type="button" id="raceStepBtn" class="btn">Step</button>
+            <button type="button" id="raceSkipBtn" class="btn" disabled>Skip</button>
+            <fieldset class="segmented speed">
+              <legend class="visually-hidden">Training speed</legend>
+              <label><input type="radio" name="raceSpeed" value="slow"><span>Slow</span></label>
+              <label><input type="radio" name="raceSpeed" value="normal" checked><span>Normal</span></label>
+              <label><input type="radio" name="raceSpeed" value="fast"><span>Fast</span></label>
+            </fieldset>
+          </div>
+          <p class="train-message" id="raceMessage"></p>
+          <p class="visually-hidden" id="raceAnnounce" aria-live="polite"></p>
+
+          <div class="params" id="raceRunners"></div>
+        </div>
+      </div>
+
+      <div class="table-scroll tall" id="raceScroll" tabindex="0" role="group" aria-label="Table of race results">
+        <table class="data-table">
+          <thead>
+            <tr><th scope="col">Optimiser</th><th scope="col" class="num">Learning rate</th><th scope="col" class="num">Steps</th><th scope="col" class="num">Ended at</th><th scope="col">What happened</th></tr>
+          </thead>
+          <tbody id="raceRows"></tbody>
+        </table>
+      </div>
+      <p class="small-print" id="raceEmpty"></p>
+      <p class="note plain" id="raceFairNote"></p>
+
+      <hr class="rule spaced">
+
+      <p class="crumb">Batch size</p>
+      <h3 class="card-title">How much data before each step?</h3>
+      <p class="blurb wide" id="batchNote"></p>
+
+      <div class="split spaced">
+        <div>
+          <p class="crumb sub first">The loss as a map</p>
+          <div class="map chart" id="batchMap" tabindex="0" role="group" aria-label="Loss map for the line's two weights. Click, or use the arrow keys, to choose where the runs start.">
+            <canvas id="batchCanvas" width="640" height="640" aria-hidden="true"></canvas>
+            <div id="batchOverlay"></div>
+          </div>
+          <p class="legend" id="batchLegend"></p>
+          <p class="blurb" id="batchMapNote"></p>
+        </div>
+
+        <div>
+          <p class="crumb sub first">The data and the lines</p>
+          <div class="chart" id="batchData"></div>
+          <p class="small-print" id="batchDataNote"></p>
+
+          <div class="train-bar" role="group" aria-label="Training with three batch sizes">
+            <button type="button" id="batchTrainBtn" class="btn primary">Train</button>
+            <button type="button" id="batchPauseBtn" class="btn" disabled>Pause</button>
+            <button type="button" id="batchStepBtn" class="btn">Step</button>
+            <button type="button" id="batchSkipBtn" class="btn" disabled>Skip</button>
+            <fieldset class="segmented speed">
+              <legend class="visually-hidden">Training speed</legend>
+              <label><input type="radio" name="batchSpeed" value="slow"><span>Slow</span></label>
+              <label><input type="radio" name="batchSpeed" value="normal" checked><span>Normal</span></label>
+              <label><input type="radio" name="batchSpeed" value="fast"><span>Fast</span></label>
+            </fieldset>
+          </div>
+          <p class="train-message" id="batchMessage"></p>
+          <p class="visually-hidden" id="batchAnnounce" aria-live="polite"></p>
+
+          <div class="params">
+            <div class="param">
+              <div class="field">
+                <label for="batchRate">Learning rate <output id="batchRateOut" for="batchRate"></output></label>
+                <input id="batchRate" type="range" min="0" max="4" step="1">
+              </div>
+              <details class="explain"><summary>What does this do?</summary><p id="batchRateNote"></p></details>
+            </div>
+            <div class="param">
+              <div class="field">
+                <label for="batchMini">Mini-batch size <output id="batchMiniOut" for="batchMini"></output></label>
+                <input id="batchMini" type="range" min="0" max="3" step="1">
+              </div>
+              <details class="explain"><summary>What does this do?</summary><p id="batchMiniNote"></p></details>
+            </div>
+          </div>
+          <div class="data-controls">
+            <div class="field field-seed">
+              <label for="batchSeed">Seed</label>
+              <input id="batchSeed" type="number" min="0" max="999999" step="1" inputmode="numeric">
+            </div>
+            <button type="button" id="batchNewBtn" class="btn">New data</button>
+          </div>
+          <p class="small-print" id="batchSeedNote"></p>
+
+          <p class="crumb sub">Loss against work done</p>
+          <div class="chart" id="batchLoss"></div>
+          <p class="small-print" id="batchLossNote"></p>
+        </div>
+      </div>
+
+      <div class="table-scroll tall" id="batchScroll" tabindex="0" role="group" aria-label="Table of results for each batch size">
+        <table class="data-table">
+          <thead>
+            <tr><th scope="col">Run</th><th scope="col" class="num">Points per step</th><th scope="col" class="num">Steps taken</th><th scope="col" class="num">Final loss</th><th scope="col" class="num">Distance from the best line</th></tr>
+          </thead>
+          <tbody id="batchRows"></tbody>
+        </table>
+      </div>
+      <p class="small-print" id="batchEmpty"></p>
     </div>
   </section>
 </main>

@@ -6,7 +6,8 @@ import { createOptimiser, OPTIMISERS } from '../assets/js/optimisers.js';
 import {
   makeLineData, loss, gradient, bestWeight, createDescent,
 } from '../labs/training/js/oneweight.js';
-import { SURFACES, RANGE, spotAt, createDescent2 } from '../labs/training/js/twoweights.js';
+import { SURFACES, RANGE, spotAt, createDescent2, createRace } from '../labs/training/js/twoweights.js';
+import { makeScatter, lineSurface, gradientOn, createBatchRace } from '../labs/training/js/batches.js';
 
 const close = (a, b, tolerance = 1e-9) => Math.abs(a - b) < tolerance;
 
@@ -245,4 +246,123 @@ test('two weights: stepping to the end equals finish, and spotAt only fires near
   assert.deepEqual(createDescent2({ surface, start: [0.2, -1.6], learningRate: 0.2 }).finish().snapshot, result.snapshot);
   assert.equal(spotAt(SURFACES.bowl, [0.5, 0.5]), null);
   assert.equal(spotAt(SURFACES.bowl, [0.01, -0.02]).kind, 'lowest');
+});
+
+// ===== the optimiser race =====
+
+const RACE_RATES = { gd: 0.3, momentum: 0.1, rmsprop: 0.05, adam: 0.1 };
+const race = (name, start, rates = RACE_RATES) => {
+  const runners = Object.entries(rates).map(([key, learningRate]) => ({ name: key, learningRate }));
+  const end = createRace({ surface: SURFACES[name], start, runners }).finish().snapshot;
+  return Object.fromEntries(end.runners.map((r) => [r.name, r]));
+};
+
+test('race: on the bowl everyone reaches the bottom, and plain gradient descent is quickest', () => {
+  const end = race('bowl', [1.5, 1.2]);
+  for (const r of Object.values(end)) {
+    assert.equal(r.outcome, 'arrived', r.name);
+    assert.equal(r.spot.kind, 'lowest', r.name);
+    assert.equal(r.history.length >= r.steps + 1, true);
+  }
+  assert.ok(end.gd.steps < Math.min(end.momentum.steps, end.rmsprop.steps, end.adam.steps));
+});
+
+test('race: on the narrow valley the other three all beat plain gradient descent', () => {
+  const end = race('valley', [1.5, 1.2]);
+  for (const name of ['momentum', 'rmsprop', 'adam']) {
+    assert.equal(end[name].outcome, 'arrived', name);
+    assert.ok(end[name].steps < end.gd.steps, `${name} ${end[name].steps} against ${end.gd.steps}`);
+  }
+});
+
+test('race: momentum can roll through a shallow dip that stops gradient descent', () => {
+  const end = race('dips', [-1.6, -1.5]);
+  assert.equal(end.gd.spot.kind, 'dip');
+  assert.equal(end.momentum.spot.kind, 'lowest');
+});
+
+test('race: a rate that is too large is reported, and the others carry on', () => {
+  const end = race('valley', [1.5, 1.2], { gd: 1.5, adam: 0.1 });
+  assert.equal(end.gd.outcome, 'diverged');
+  assert.equal(end.adam.outcome, 'arrived');
+});
+
+test('race: stepping to the end equals finish', () => {
+  const make = () => createRace({ surface: SURFACES.saddle, start: [1.5, 0.4], runners: [{ name: 'gd', learningRate: 0.3 }, { name: 'adam', learningRate: 0.1 }] });
+  const stepped = make();
+  let result = stepped.step();
+  while (!result.done) result = stepped.step();
+  assert.deepEqual(make().finish().snapshot, result.snapshot);
+});
+
+// ===== batch size =====
+
+const BATCH_RUNNERS = [{ key: 'full', batchSize: 40 }, { key: 'mini', batchSize: 8 }, { key: 'single', batchSize: 1 }];
+const batches = (seed, learningRate = 0.1, passes = 20) => {
+  const { points } = makeScatter(seed);
+  const run = createBatchRace({ points, start: [-0.5, 2], learningRate, seed, passes, runners: BATCH_RUNNERS });
+  const end = run.finish().snapshot;
+  return { points, surface: run.surface, end, by: Object.fromEntries(end.runners.map((r) => [r.key, r])) };
+};
+
+test('scatter data: same seed, same points; the best line is where the gradient is zero', () => {
+  assert.deepEqual(makeScatter(42), makeScatter(42));
+  assert.notDeepEqual(makeScatter(42).points, makeScatter(43).points);
+  const { points } = makeScatter(42);
+  assert.equal(points.length, 40);
+  const surface = lineSurface(points);
+  const [ga, gb] = surface.gradient(...surface.best);
+  assert.ok(Math.hypot(ga, gb) < 1e-9);
+  assert.ok(surface.loss(...surface.best) < surface.loss(surface.best[0] + 0.1, surface.best[1]));
+  // Measured on every point, the batch gradient is the full gradient.
+  assert.deepEqual(gradientOn(0.3, -0.2, points), surface.gradient(0.3, -0.2));
+});
+
+test('batch race: everyone sees the same amount of data, so small batches take more steps', () => {
+  const { by, end } = batches(42);
+  assert.equal(end.pass, 20);
+  assert.equal(by.full.updates, 20);
+  assert.equal(by.mini.updates, 100);
+  assert.equal(by.single.updates, 800);
+  for (const r of end.runners) {
+    assert.equal(r.outcome, 'done');
+    assert.equal(r.history.length, r.updates + 1);
+    assert.equal(r.history[r.history.length - 1].seen, 800);
+  }
+});
+
+test('batch race: full batch is plain gradient descent, and its loss only ever falls', () => {
+  const { points, by, surface } = batches(42);
+  let w = [-0.5, 2];
+  for (let i = 0; i < 20; i++) {
+    const [ga, gb] = surface.gradient(w[0], w[1]);
+    w = [w[0] - 0.1 * ga, w[1] - 0.1 * gb];
+  }
+  assert.ok(close(by.full.w[0], w[0]) && close(by.full.w[1], w[1]));
+  for (let i = 1; i < by.full.history.length; i++) assert.ok(by.full.history[i].loss < by.full.history[i - 1].loss);
+  assert.equal(points.length, 40);
+});
+
+test('batch race: single points are noisy but get much further on the same work', () => {
+  for (const seed of [42, 7, 3]) {
+    const { by, surface } = batches(seed);
+    const off = (r) => Math.hypot(r.w[0] - surface.best[0], r.w[1] - surface.best[1]);
+    // Noisy: the loss goes up as well as down.
+    const rises = by.single.history.filter((h, i) => i > 0 && h.loss > by.single.history[i - 1].loss).length;
+    assert.ok(rises > 50, `seed ${seed}: ${rises} rises`);
+    // Further: closer to the best line than full batch after the same passes.
+    assert.ok(off(by.single) < off(by.full), `seed ${seed}`);
+    assert.ok(off(by.mini) < off(by.full), `seed ${seed}`);
+  }
+});
+
+test('batch race: the shuffles come from the seed, and stepping equals finish', () => {
+  assert.deepEqual(batches(42).end, batches(42).end);
+  assert.notDeepEqual(batches(42).by.single.w, batches(43).by.single.w);
+  const { points } = makeScatter(5);
+  const make = () => createBatchRace({ points, start: [0, 0], learningRate: 0.1, seed: 5, passes: 3, runners: BATCH_RUNNERS });
+  const stepped = make();
+  let result = stepped.step();
+  while (!result.done) result = stepped.step();
+  assert.deepEqual(make().finish().snapshot, result.snapshot);
 });

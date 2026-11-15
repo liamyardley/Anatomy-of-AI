@@ -5,6 +5,7 @@
 import { createEngine } from '../../../assets/js/engine.js';
 import { fmt, texNum, setValue, renderTex, prefersReducedMotion } from '../../../assets/js/format.js';
 import { SURFACES, RANGE, createDescent2 } from './twoweights.js';
+import { BOX, createMapView } from './mapview.js';
 import { TWO_WEIGHTS, TWO_TRAIN_COPY } from '../content/notes.js';
 
 const $ = (id) => document.getElementById(id);
@@ -16,8 +17,6 @@ const SPEEDS = {
   fast: { steps: 2, interval: 30 },
 };
 const GRID = 0.05;     // clicks and arrow keys place the start on this grid
-const BANDS = 16;      // how many height bands the map is drawn in
-const CELLS = 160;     // the map is coloured in CELLS x CELLS squares
 const MAX_GHOSTS = 8;  // earlier paths kept on the map
 
 // Each surface's loss, written out.
@@ -51,77 +50,15 @@ const big = (value, places = 3) => (Math.abs(value) >= 1000 ? value.toExponentia
 // A canvas holds the coloured height bands; an SVG on top holds everything
 // that changes (the paths, the start, the current point and its next step).
 
-const BOX = { SIZE: 360, L: 36, T: 8, PLOT: 316 };
-const px = (a) => BOX.L + ((a + RANGE) / (2 * RANGE)) * BOX.PLOT;
-const py = (b) => BOX.T + ((RANGE - b) / (2 * RANGE)) * BOX.PLOT;
-
-// Lowest and highest loss on the map, for scaling the bands.
-function heights() {
-  let low = Infinity;
-  let high = -Infinity;
-  for (let i = 0; i <= 80; i++) {
-    for (let j = 0; j <= 80; j++) {
-      const value = surface().loss(-RANGE + (i / 80) * 2 * RANGE, -RANGE + (j / 80) * 2 * RANGE);
-      if (value < low) low = value;
-      if (value > high) high = value;
-    }
-  }
-  for (const spot of surface().spots) low = Math.min(low, surface().loss(spot.at[0], spot.at[1]));
-  return { low, high };
-}
-
-// Which band a height falls in. The square root packs more bands near the
-// bottom, where the interesting shapes are.
-const band = (value, low, high) => Math.min(BANDS - 1, Math.floor(BANDS * Math.sqrt((value - low) / (high - low))));
-
-// Colour the map: the lower the ground, the stronger the tint, with a thin
-// line wherever one band meets the next (the contour lines).
-function drawMap() {
-  const canvas = $('twoCanvas');
-  const size = canvas.width;
-  const cell = size / CELLS;
-  const ctx = canvas.getContext('2d');
-  const style = getComputedStyle(document.documentElement);
-  const tint = style.getPropertyValue('--ml-line').trim();
-  const line = style.getPropertyValue('--muted').trim();
-  const { low, high } = heights();
-  const levels = [];
-  for (let j = 0; j < CELLS; j++) {
-    const row = [];
-    for (let i = 0; i < CELLS; i++) {
-      const a = -RANGE + ((i + 0.5) / CELLS) * 2 * RANGE;
-      const b = RANGE - ((j + 0.5) / CELLS) * 2 * RANGE;
-      row.push(band(surface().loss(a, b), low, high));
-    }
-    levels.push(row);
-  }
-  ctx.clearRect(0, 0, size, size);
-  ctx.fillStyle = tint;
-  for (let j = 0; j < CELLS; j++) {
-    for (let i = 0; i < CELLS; i++) {
-      ctx.globalAlpha = 0.62 * (1 - levels[j][i] / (BANDS - 1)) ** 1.3 + 0.03;
-      ctx.fillRect(i * cell, j * cell, cell + 0.5, cell + 0.5);
-    }
-  }
-  ctx.globalAlpha = 0.5;
-  ctx.fillStyle = line;
-  for (let j = 0; j < CELLS; j++) {
-    for (let i = 0; i < CELLS; i++) {
-      if (i + 1 < CELLS && levels[j][i + 1] !== levels[j][i]) ctx.fillRect((i + 1) * cell - 0.5, j * cell, 1, cell);
-      if (j + 1 < CELLS && levels[j + 1][i] !== levels[j][i]) ctx.fillRect(i * cell, (j + 1) * cell - 0.5, cell, 1);
-    }
-  }
-  ctx.globalAlpha = 1;
-}
-
-const points = (history) => history.map((h) => `${px(h.w[0]).toFixed(1)},${py(h.w[1]).toFixed(1)}`).join(' ');
+let view = null; // made in startPartTwo, once the page is there
+const px = (a) => view.px(a);
+const py = (b) => view.py(b);
+const drawMap = () => view.draw(surface());
+const points = (history) => view.line(history.map((h) => h.w));
 
 function drawOverlay() {
   const { SIZE, L, T, PLOT } = BOX;
   const ticks = [-2, -1, 0, 1, 2];
-  const axes = ticks.map((v) => `
-    <text class="tick" x="${px(v)}" y="${T + PLOT + 13}" text-anchor="middle">${v}</text>
-    <text class="tick" x="${L - 5}" y="${py(v) + 3}" text-anchor="end">${v}</text>`).join('');
 
   const ghosts = state.ghosts.map((history) => `<polyline class="ghost" points="${points(history)}"/>
     <circle class="ghost-end" cx="${px(history[history.length - 1].w[0]).toFixed(1)}" cy="${py(history[history.length - 1].w[1]).toFixed(1)}" r="3"/>`).join('');
@@ -148,13 +85,10 @@ function drawOverlay() {
 
   $('twoOverlay').innerHTML = `<svg viewBox="0 0 ${SIZE} ${SIZE}" role="img" aria-label="Contour map of the loss for two weights. The point is at ${pair(state.at)}, where the loss is ${fmt(surface().loss(a, b), 3)}.">
     <defs>
-      <clipPath id="twoClip"><rect x="${L}" y="${T}" width="${PLOT}" height="${PLOT}"/></clipPath>
+      ${view.clip('twoClip')}
       <marker id="twoArrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path class="arrow-head" d="M0 0 10 5 0 10Z"/></marker>
     </defs>
-    <rect class="map-frame" x="${L}" y="${T}" width="${PLOT}" height="${PLOT}"/>
-    ${axes}
-    <text class="axis-title" x="${L + PLOT / 2}" y="${SIZE - 4}" text-anchor="middle">weight w₁</text>
-    <text class="axis-title" transform="translate(10 ${T + PLOT / 2}) rotate(-90)" text-anchor="middle">weight w₂</text>
+    ${view.axes(ticks, ticks, 'weight w\u2081', 'weight w\u2082')}
     <g clip-path="url(#twoClip)">
       ${ghosts}${path}
       <path class="start-mark" d="M${px(sa) - 5} ${py(sb) - 5}l10 10m0 -10l-10 10"/>
@@ -300,6 +234,7 @@ function setSurface(key) {
 // ===== Controls =====
 
 export function startPartTwo() {
+  view = createMapView({ canvas: $('twoCanvas'), xRange: [-RANGE, RANGE], yRange: [-RANGE, RANGE] });
   $('twoMapNote').innerHTML = TWO_WEIGHTS.map;
   $('twoDescentNote').innerHTML = TWO_WEIGHTS.descent;
   $('twoRateNote').innerHTML = TWO_WEIGHTS.learningRate;
@@ -319,12 +254,9 @@ export function startPartTwo() {
   // Click (or tap) the map to choose where training starts.
   const map = $('twoMap');
   map.addEventListener('click', (event) => {
-    const box = map.getBoundingClientRect();
-    const scale = BOX.SIZE / box.width;
-    const x = (event.clientX - box.left) * scale;
-    const y = (event.clientY - box.top) * scale;
-    if (x < BOX.L || x > BOX.L + BOX.PLOT || y < BOX.T || y > BOX.T + BOX.PLOT) return;
-    setStart(-RANGE + ((x - BOX.L) / BOX.PLOT) * 2 * RANGE, RANGE - ((y - BOX.T) / BOX.PLOT) * 2 * RANGE);
+    const at = view.weightsAt(event, map);
+    if (!at) return;
+    setStart(at[0], at[1]);
     announce(`Start at ${pair(state.start)}. Press Train.`);
   });
   // The arrow keys move the start one grid square at a time.

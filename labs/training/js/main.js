@@ -11,6 +11,7 @@ import {
 } from './oneweight.js';
 import { createRng } from '../../../assets/js/rng.js';
 import { startPartTwo } from './part2.js';
+import { startPartThree } from './part3.js';
 import { ONE_WEIGHT, TRAIN_COPY, RUNS_COPY, SEED_NOTE } from '../content/notes.js';
 
 const $ = (id) => document.getElementById(id);
@@ -388,3 +389,4 @@ if (/^\d{1,6}$/.test(query.get('seed') || '')) state.seed = Number(query.get('se
 $('loadNotice').remove(); // the scripts loaded, so the server note is not needed
 newData(state.seed);
 startPartTwo();
+startPartThree();
