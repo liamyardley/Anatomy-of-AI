@@ -135,7 +135,7 @@ The lab is about what each model does to classify the data, so its settings are 
   - **Cosine:** ignores how far a point is from the origin and compares only direction. Visualise it by sliding every point onto the unit circle (animated), then finding neighbours by angle, so the neighbourhood is a wedge from the origin and the regions become slices radiating outwards. The Ring dataset becomes impossible (inner and outer points share directions), which is the lesson. This also sets up the word vectors lab, where similar words cluster on a sphere by angle.
 - [x] Decision tree: Gini or entropy; minimum samples to split; maximum number of leaves; **cost-complexity pruning** (tree regularisation).
 - [x] Random forest: minimum samples per leaf; sample size per tree.
-- [ ] Tidy-up: move logistic regression's **learning rate** behind "More settings", and add a link from it to Lab 2 once that exists. Regularisation strength (L2) stays on show, because the "high degree overfits, regularisation pulls it back" lesson needs it.
+- [ ] Tidy-up: move logistic regression's **learning rate** behind "More settings". (The link from it to Lab 2 is done, along with one in the lab's introduction.) Regularisation strength (L2) stays on show, because the "high degree overfits, regularisation pulls it back" lesson needs it.
 
 Moved to Lab 2 (were in step 1): L1 and elastic net penalties, the choice of optimiser, k-fold cross-validation, the train/test split ratio, and the sweep.
 
