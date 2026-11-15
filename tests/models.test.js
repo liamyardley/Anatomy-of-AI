@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { createRng } from '../labs/ml/js/rng.js';
+import { createRng } from '../assets/js/rng.js';
 import { createDataset, buildPoints } from '../labs/ml/js/datasets.js';
 import { confusion, summarise } from '../labs/ml/js/metrics.js';
 import { createLogistic, polynomialTerms } from '../labs/ml/js/models/logistic.js';

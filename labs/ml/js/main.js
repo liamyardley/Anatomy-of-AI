@@ -5,7 +5,7 @@
 // registry.js and the common model interface, so a new model needs no
 // changes here.
 
-import { createRng } from './rng.js';
+import { createRng } from '../../../assets/js/rng.js';
 import {
   DATASET_TYPES, DEFAULT_POINT_COUNT, createDataset, buildPoints, morePoints, kindLabel,
 } from './datasets.js';
@@ -15,9 +15,9 @@ import {
 import { rocChart } from './charts.js';
 import { trainAll, describeSettings } from './compare.js';
 import { createPlot } from './plot.js';
-import { createEngine } from './engine.js';
+import { createEngine } from '../../../assets/js/engine.js';
 import { MODELS } from './registry.js';
-import { fmt, pct, setValue, prefersReducedMotion } from './format.js';
+import { fmt, pct, setValue, prefersReducedMotion } from '../../../assets/js/format.js';
 import {
   DATASET_NOTES, COPY, TRAIN_COPY, PARAM_NOTES, MODEL_NOTES,
   COMPARE_COPY, ACTIVITY_COPY, ACTIVITY_NOTES, FIELD_NOTES,

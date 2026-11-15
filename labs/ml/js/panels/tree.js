@@ -7,7 +7,7 @@
 // setOverlay() to light up a group's rectangle on the plot.
 
 import { MODEL_NOTES, COPY } from '../../content/notes.js';
-import { fmt, setValue, renderTex } from '../format.js';
+import { fmt, setValue, renderTex } from '../../../../assets/js/format.js';
 import {
   roles, setHtml, classLabel, verdict, settingLink, followSettingLinks,
 } from './shared.js';

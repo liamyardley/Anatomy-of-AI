@@ -1,6 +1,6 @@
 // Helpers shared by the models' maths panels.
 
-import { fmt, MARK } from '../format.js';
+import { fmt, MARK } from '../../../../assets/js/format.js';
 
 // Collect every element marked data-role="name" inside the given parts into
 // one object, so a panel can write el.name.

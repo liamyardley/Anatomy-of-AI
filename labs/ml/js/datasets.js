@@ -12,7 +12,7 @@
 //
 // `noise` is a multiplier: 1 is the default amount, 0 is none, 2 is double.
 
-import { createRng } from './rng.js';
+import { createRng } from '../../../assets/js/rng.js';
 import { assignSplit, DEFAULT_TRAIN_SHARE } from './metrics.js';
 
 const TAU = Math.PI * 2;

@@ -77,20 +77,23 @@ node --test
 | --- | --- |
 | `index.html` | The home page: the interactive diagram, with its styling and scripts |
 | `assets/css/theme.css` | Colours shared by the home page and the labs, for light and dark mode |
+| `assets/js/optimisers.js` | Gradient descent, momentum, RMSProp and Adam: the rules for turning a gradient into a step |
 | `labs/ml/index.html` | The Machine Learning Lab page |
-| `labs/ml/css/lab.css` | The lab's layout and styling |
+| `assets/css/lab.css` | Layout and styling shared by the labs |
 | `labs/ml/content/notes.js` | All the lab's explanatory text, kept in one place so it is easy to edit |
 | `labs/ml/js/main.js` | Wiring: page state, controls and the training loop |
 | `labs/ml/js/registry.js` | The list of models; adding a model starts here |
-| `labs/ml/js/rng.js` | The seeded random number generator behind everything random |
+| `assets/js/rng.js` | The seeded random number generator behind everything random |
 | `labs/ml/js/datasets.js` | The dataset generators |
 | `labs/ml/js/plot.js` | The plot: points, shaded regions, boundary line, mouse, touch and keyboard |
-| `labs/ml/js/engine.js` | Runs any model's training step by step so it can be animated |
+| `assets/js/engine.js` | Runs any model's training step by step so it can be animated |
 | `labs/ml/js/metrics.js` | Train/test split, confusion matrix, accuracy and the other scores, ROC curve |
 | `labs/ml/js/compare.js` | Trains every model on the same data for the comparison table |
-| `labs/ml/js/charts.js`, `format.js` | Small helpers for charts, numbers and formulas |
+| `labs/ml/js/charts.js`, `assets/js/format.js` | Small helpers for charts, numbers and formulas |
 | `labs/ml/js/models/` | The four models: `logistic.js`, `knn.js`, `tree.js`, `forest.js`. Plain code with no page access, so they can be tested on their own |
 | `labs/ml/js/panels/` | Each model's part of the mathematics panel |
+| `labs/training/` | A second lab, under construction: how a model finds its numbers |
+| `plan.md` | The plan for the whole project, with what is built and what is next |
 | `tests/` | Unit tests, run with `node --test` |
 | `package.json` | Tells Node.js how to read the scripts; there are no dependencies |
 | `preview.png` | The screenshot shown in this README |

@@ -6,7 +6,7 @@
 // See panels/logistic.js for how a panel is put together.
 
 import { MODEL_NOTES, COPY } from '../../content/notes.js';
-import { fmt, pct, setValue, renderTex } from '../format.js';
+import { fmt, pct, setValue, renderTex } from '../../../../assets/js/format.js';
 import { roles, sizeRows, setHtml, classLabel, verdict } from './shared.js';
 
 const note = MODEL_NOTES.forest;

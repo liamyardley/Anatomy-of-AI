@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { createRng } from '../labs/ml/js/rng.js';
+import { createRng } from '../assets/js/rng.js';
 import {
   DATASET_TYPES, createDataset, buildPoints, morePoints, samplePoints,
   jitterPoints, ADD_MORE_COUNT,

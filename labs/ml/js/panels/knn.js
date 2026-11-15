@@ -5,7 +5,7 @@
 // See panels/logistic.js for how a panel is put together.
 
 import { MODEL_NOTES, COPY } from '../../content/notes.js';
-import { fmt, texNum, setValue, renderTex } from '../format.js';
+import { fmt, texNum, setValue, renderTex } from '../../../../assets/js/format.js';
 import {
   roles, sizeRows, setHtml, classLabel, verdict, settingLink, followSettingLinks,
 } from './shared.js';

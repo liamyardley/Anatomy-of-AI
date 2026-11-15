@@ -10,7 +10,7 @@
 // explain() and `context` is { threshold, status, flash }.
 
 import { MODEL_NOTES, COPY } from '../../content/notes.js';
-import { fmt, texNum, setValue, renderTex, MARK } from '../format.js';
+import { fmt, texNum, setValue, renderTex, MARK } from '../../../../assets/js/format.js';
 
 const note = MODEL_NOTES.logistic;
 

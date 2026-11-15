@@ -120,7 +120,7 @@ Notes on what was built (where it differs from, or adds to, the brief):
 - k-NN already has distance weighting (on or off). Its only distance so far is Euclidean.
 - The Checkerboard's crossing point is always off-centre. With four equal blocks a decision tree has no first split worth making.
 - Noisy islands does not single out the random forest: at default settings logistic regression and k-NN do as well. The activity text says so. Open: change the generator, or leave it.
-- The engine (plot, training controls, RNG, model interface) lives in `labs/ml/js/` for now, not in `assets/`. It moves when a second lab needs it.
+- The RNG, formatting helpers and training engine now live in `assets/js/` (moved for Lab 2). The plot and the models are still in `labs/ml/js/`.
 - Still to do from the brief's checks: try it with reduced motion, on a real touch device, and with a screen reader.
 - Not built yet from section 3: the optimiser module (planned with Lab 2, below).
 
@@ -168,8 +168,8 @@ Next, step 3: **regression mode** (one input, a continuous output, click to plac
 **Lab 2: How a model finds its numbers (fitting)** at `labs/training/` (linked from Deep learning too). Next to be built.
 
 Built in phases, each committed and reviewed, as Lab 1 was:
-- [ ] Phase 0, shared engine: move what both labs need (seeded RNG, number and formula helpers, the training engine and its controls, the logistic regression model) from `labs/ml/js/` into `assets/js/`, with Lab 1 still passing its tests and working as before. Add the **optimiser module** there: gradient descent, momentum, RMSProp and Adam behind one small interface, pure and unit tested.
-- [ ] Phase 1, one weight: a tiny dataset and a model with a single number to find. Drag the weight by hand and watch the loss change; try to find the lowest point before pressing Train. Then gradient descent takes steps down the curve. The learning rate goes from crawling, to overshooting, to blowing up.
+- [x] Phase 0, shared engine: the seeded RNG, the number and formula helpers and the training engine moved from `labs/ml/js/` into `assets/js/`, and the labs' shared styles into `assets/css/lab.css`, with Lab 1 still passing its tests and working as before. The **optimiser module** is there too (`assets/js/optimisers.js`): gradient descent, momentum, RMSProp and Adam behind one small interface, pure and unit tested. Not moved yet: the logistic regression model, which stays in Lab 1 until phase 4 needs it.
+- [x] Phase 1, one weight: a tiny dataset and a model with a single number to find. Drag the weight by hand and watch the loss change; try to find the lowest point before pressing Train. Then gradient descent takes steps down the curve. The learning rate goes from crawling, to overshooting, to blowing up.
 - [ ] Phase 2, two weights: the loss as a contour map. Click a start point and watch the path. Surfaces: a bowl, a long narrow valley, a saddle, and one with several dips (where the start point decides the answer).
 - [ ] Phase 3, optimisers and batch size: race gradient descent, momentum, RMSProp and Adam from the same start. Full batch, mini-batch and single-point updates (smooth against noisy paths).
 - [ ] Phase 4, the real thing: the true loss surface of a logistic regression on a Lab 1 dataset, with the path on the contour map and the boundary moving on the data plot side by side: "this is what Train was doing".

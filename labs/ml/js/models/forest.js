@@ -13,7 +13,7 @@
 // The model has the lab's common shape (see logistic.js). One training step
 // grows one whole tree.
 
-import { createRng } from '../rng.js';
+import { createRng } from '../../../../assets/js/rng.js';
 import { growTree, leafProbability } from './tree.js';
 
 const THUMBNAILS = 9; // how many of the first trees explain() hands over to be drawn

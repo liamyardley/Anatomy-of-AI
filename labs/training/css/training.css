@@ -1,0 +1,28 @@
+/* The training lab: the few styles it needs on top of assets/css/lab.css. */
+
+.lede a { color: var(--ink); font-weight: 600; text-decoration-color: var(--ml-line); text-underline-offset: 3px; }
+
+.weight-field { margin: 12px 0 14px; }
+.weight-field input[type="range"] { min-height: 32px; }
+.data-controls { display: flex; align-items: flex-end; gap: 10px; margin-top: 4px; }
+.data-controls .field { width: 120px; }
+.facts { margin-top: 10px; }
+.facts + .blurb { margin-top: 14px; }
+.note.plain { font-weight: 400; color: var(--muted); }
+
+/* --- the two charts --- */
+.chart .grid { stroke: var(--border); stroke-width: 1; opacity: .5; }
+.chart .model-line { stroke: var(--ml-line); stroke-width: 2.5; stroke-linecap: round; }
+.chart .miss { stroke: var(--class-red); stroke-width: 1.5; stroke-dasharray: 3 3; }
+.chart .point { fill: var(--ink); stroke: var(--surface); stroke-width: 1; }
+.chart .tried { fill: var(--muted); opacity: .55; }
+.chart .loss-curve { fill: none; stroke: var(--muted); stroke-width: 1.5; stroke-dasharray: 5 4; }
+.chart .path { fill: none; stroke: var(--ml-line); stroke-width: 1.8; stroke-linejoin: round; }
+.chart .path-dot { fill: var(--ml-line); stroke: var(--surface); stroke-width: 1; }
+.chart .tangent { stroke: var(--ink); stroke-width: 2; stroke-linecap: round; }
+.chart .here { fill: var(--surface); stroke: var(--ink); stroke-width: 2.5; }
+.chart .axis-title { fill: var(--muted); font-size: 10px; font-family: 'Karla', system-ui, sans-serif; }
+
+/* A run that no longer matches the settings is faded until Train is pressed. */
+.fitted-stale { opacity: .4; }
+.train-message[data-status="stale"] { border-style: dashed; border-color: var(--cv-line); }
