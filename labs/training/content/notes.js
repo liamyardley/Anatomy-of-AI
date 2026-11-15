@@ -156,3 +156,118 @@ export const BATCH_COPY = {
   closest: (label, updates) => `${label} ended closest to the best line, after ${updates} steps.`,
   diverged: (names) => `${names} flew off: the learning rate is too large for steps this noisy.`,
 };
+
+// ===== Part 4: the real thing =====
+
+const share = (value) => `${Math.round(value * 100)}%`;
+
+export const REAL_COPY = {
+  intro: 'Everything so far used made-up surfaces. This one is real. The points are the <strong>Two clouds</strong> dataset from the Machine Learning Lab, and the model is its <strong>logistic regression</strong>: a straight line that splits the plot into a red side and a blue side. The map on the right is that model\'s true loss for every possible pair of weights. Press <strong>Train</strong> and watch both at once: each step on the map is a small turn of the line on the data. This is what Train was doing in the Machine Learning Lab.',
+  data: 'Red circles and blue triangles, as in the Machine Learning Lab. The thick line is the model\'s boundary, and the short arrow points to the side it calls blue. The dot is the centre of the data. To keep the model to two weights that fit on a map, its line always passes through that dot (the full model has a third number, the bias, which lets the line sit anywhere).',
+  map: 'The plus sign is the lowest loss: the best line this model can draw. Click the map to choose different starting weights (the cross). The Machine Learning Lab always starts from zero, the middle of the map.',
+  noLine: 'Both weights are zero: no line yet',
+  offMap: 'the lowest point is off the map',
+  modelKey: 'The model turns each point into a probability of blue: a weighted sum of the point\'s two coordinates, squashed into the range 0 to 1 by the function &sigma; (sigma). The loss is the <strong>log-loss</strong>: small when the true colour gets a high probability, large when the model is confidently wrong.',
+  learningRate: 'The same learning rate as in Part 1, but the useful values are much larger here. The coordinates of the points are small numbers (between about &minus;1 and 1), so the loss surface slopes gently and small rates crawl. That is why the Machine Learning Lab offers rates up to 30.',
+  overlap: 'How much the two clouds overlap (the "noise" setting in the Machine Learning Lab). When they overlap a lot, no line is very good and the best weights are small: the model stays unsure. When they barely overlap, the model can afford to be confident, and the best weights are large. If a line separates the colours perfectly there is no lowest point at all: bigger weights always score a little better, for ever. That runaway is one reason for the penalty in Part 5.',
+  seed: 'The same seed gives the same clouds here as the Two clouds dataset gives in the Machine Learning Lab (with 80 points).',
+  link: 'In the Machine Learning Lab the same loop runs with more weights: a bias, and at higher feature degrees a weight for every squared and multiplied term. The map would need more dimensions than can be drawn, but nothing else changes.',
+  untrained: 'Press Train to watch gradient descent turn the line.',
+  stale: 'Something changed: press Train to start again from the cross',
+  progress: (s, acc) => `Step ${s.step}: loss ${s.loss.toFixed(3)}, ${share(acc)} of points on the right side`,
+  settled: (s, acc) => `Settled after ${s.step} steps: loss ${s.loss.toFixed(3)}, with ${share(acc)} of the points on the right side of the line. It cannot reach 100%, because the clouds overlap.`,
+  limit: (s, acc) => `Stopped after ${s.step} steps, still creeping downhill (loss ${s.loss.toFixed(3)}, ${share(acc)} right). The line is close, but the weights are still growing. Try a larger learning rate.`,
+  noBottom: (s, acc) => `Stopped after ${s.step} steps (loss ${s.loss.toFixed(3)}, ${share(acc)} right). These clouds can be separated perfectly, so there is no lowest point: the weights would keep growing for ever.`,
+  bouncing: (s, acc) => `Stopped after ${s.step} steps without settling (loss ${s.loss.toFixed(3)}, ${share(acc)} right). The steps keep jumping across the valley. Try a smaller learning rate.`,
+  diverged: (s) => `Stopped after ${s.step} steps: the loss kept growing. The learning rate is too large.`,
+};
+
+// ===== Part 5: regularisation =====
+
+export const REG_COPY = {
+  intro: 'Left alone, training chases the lowest loss on the data it has, and large weights are often how it gets there: Part 4 showed weights growing without limit. Large weights tend to mean a model that has fitted the quirks of its training data. <strong>Regularisation</strong> adds a second cost, a <strong>penalty</strong> for large weights, so training has to balance two things: fit the data, and keep the weights small. The <strong>strength</strong> sets how much the penalty counts.',
+  map: 'The contours show the data loss alone, and the plus sign is its lowest point: the best fit with no penalty. The penalty pulls towards zero, where the two dotted lines cross. Training settles somewhere between. Once a run starts, a shape is drawn through the current weights: every pair of weights on that shape has the same penalty. Click the map to move the start.',
+  kinds: { none: 'No penalty', l2: 'L2 (ridge)', l1: 'L1 (lasso)', elastic: 'Elastic net' },
+  shapes: {
+    none: 'With no penalty, training ends at the plus sign: the best fit to this data.',
+    l2: '<strong>L2</strong> (also called <strong>ridge</strong>) charges for the <em>square</em> of each weight. Weights with equal penalty lie on a <strong>circle</strong>. Large weights are charged heavily and small ones almost nothing, so every weight is shrunk, but none is pushed all the way to zero.',
+    l1: '<strong>L1</strong> (also called <strong>lasso</strong>) charges for the <em>size</em> of each weight. Weights with equal penalty lie on a <strong>diamond</strong>, with its corners on the dotted lines, where one weight is exactly zero. The charge for a small weight is as steep as for a large one, so a weight that is not earning its keep is pushed all the way to zero.',
+    elastic: 'The <strong>elastic net</strong> charges half of each. Its shape is a diamond with rounded sides: it still has corners, so it can still set weights to zero, but it shrinks the others more smoothly.',
+  },
+  strength: 'The strength (written &lambda;, lambda) multiplies the penalty. Near zero the penalty hardly counts and training ends close to the plus sign. As the strength grows, the answer is pulled towards zero and fits the data less well. The right strength is a matter of trying several and checking each on data the model has not seen.',
+  why: '<strong>Why does the diamond give exact zeros?</strong> The answer is where the penalty shape first touches a loss contour. A circle is equally round everywhere, so it can touch anywhere, and almost never exactly on a dotted line. A diamond sticks out at its corners, so a contour usually meets a corner first, and a corner sits on a dotted line, where one weight is zero. In the training loop this shows up as an extra move after every step: each weight is shrunk towards zero by a fixed amount, and a weight that would cross zero stops there.',
+  seed: 'The seed decides the data for the map and for the sweep below.',
+  untrained: 'Choose a penalty and a strength, then press Train.',
+  stale: 'Something changed: press Train to start again from the cross',
+  progress: (s) => `Step ${s.step}: weights (${num(s.w[0], 2)}, ${num(s.w[1], 2)}), data loss ${s.loss.toFixed(3)}`,
+  finished: (s, settled) => `${settled ? 'Settled' : 'Stopped'} after ${s.step} steps at (${num(s.w[0], 2)}, ${num(s.w[1], 2)}), data loss ${s.loss.toFixed(3)}.`,
+  endings: {
+    none: 'This is the best fit to the data, with nothing holding the weights back.',
+    l2: 'Both weights have been shrunk towards zero, but neither is exactly zero.',
+    l1: 'Both weights have been shrunk, and neither has reached zero yet. Try a larger strength.',
+    elastic: 'Both weights have been shrunk, and neither has reached zero yet. Try a larger strength.',
+    oneZero: (which) => `Weight w${which} is exactly zero: the model has dropped that feature altogether.`,
+    bothZero: 'Both weights are exactly zero: the penalty is so strong that the model ignores the data.',
+  },
+  sweepIntro: 'Two weights make a good picture, but the effect matters most with many. This model has <strong>six</strong> features. Only the first three affect the answer; the last three are irrelevant, though the model is not told that. The sweep trains the model again and again, with a stronger penalty each time, and plots where each weight ends up.',
+  sweepLegend: 'Solid lines are the three features that matter (w1, w2, w3). Dashed lines are the three irrelevant ones (w4, w5, w6). The penalty grows from left to right.',
+  sweepEmpty: 'Press Run the sweep.',
+  sweepDone: 'The sweep has finished: three charts drawn.',
+  sweepNotes: {
+    l2: () => 'Ridge shrinks every weight smoothly towards zero, and none ever reaches it. The irrelevant features are kept, with small weights.',
+    l1: (first, idle, kept, all) => `Lasso selects. ${idle !== null ? `By a strength of ${idle.toPrecision(2)} all three irrelevant weights are exactly zero${kept === 3 ? ', while the three that matter are still in use' : ''}.` : 'The irrelevant weights fall to exactly zero one by one.'}${all !== null ? ` By ${all.toPrecision(2)} every weight is zero.` : ''}`,
+    elastic: (first, idle) => `The elastic net does some of each: it shrinks like ridge and also sets weights to exactly zero, but needs a stronger penalty than lasso to do it${idle !== null ? ` (all three irrelevant weights are gone by ${idle.toPrecision(2)})` : ''}.`,
+  },
+  link: 'The Machine Learning Lab\'s logistic regression has an L2 setting, called regularisation strength. Raise its feature degree to 5 on a noisy dataset, watch the boundary twist to fit single points, then turn the strength up and watch it relax.',
+};
+
+// ===== Predict, observe, explain: one short activity for each part =====
+
+export const ACTIVITIES = {
+  one: {
+    predict: 'With a learning rate of 0.3, training from a weight of 0 takes a certain number of steps. If you double the rate to 0.6, will it take about half as many steps, fewer than half, or more?',
+    observe: 'Set the weight to 0 and train at 0.3, then at 0.6, then at 1.5. Read the three rows in the table of runs.',
+    explain: 'Each step closes a fixed share of the remaining gap: 30% at a rate of 0.3, and 60% at 0.6. Closing 60% each time gets there in well under half the steps (12 against 26 with the starting data). But more is not always better: at 1.5 each step jumps past the bottom and lands half as far away on the other side, which takes 16 steps. The fastest rate is the one that lands on the bottom, not the largest one that still works.',
+  },
+  two: {
+    predict: 'Choose the Saddle. If training starts exactly on the middle line (w<sub>2</sub> = 0), where will it end? And if it starts one click above the line?',
+    observe: 'Select the map and use the arrow keys to put the start exactly on w<sub>2</sub> = 0, then train. Move the start up one step and train again.',
+    explain: 'On the middle line the slope along w<sub>2</sub> is exactly zero, so gradient descent never moves off the line. It slides along to the saddle point and stops there, on flat ground that is not a dip. One click above, there is a tiny slope away from the line, and it grows with every step, so the run curves off into a real dip. In practice almost every start is slightly off the line, which is why saddles slow training down more often than they stop it.',
+  },
+  race: {
+    predict: 'Choose the Bowl. Which of the four optimisers will arrive first?',
+    observe: 'Race them on the Bowl, then on the Narrow valley, from the same start.',
+    explain: 'On the Bowl, plain gradient descent wins easily. The ground is equally steep in every direction, so a step in proportion to the slope is exactly right, and the cleverer rules only add caution or overshoot. On the Narrow valley the order reverses: the plain rule crawls along the flat floor while the others, built for ground that is steeper one way than the other, get there in about half the steps or fewer. An optimiser is a tool for a kind of surface, not a ranking.',
+  },
+  batch: {
+    predict: 'All three runs look at the same amount of data. After 20 passes, which will be closest to the best line: full batch, mini-batch or single point?',
+    observe: 'Train at a learning rate of 0.1. Then try 0.03 and 0.4.',
+    explain: 'At 0.1 the mini-batch run usually ends closest. Full batch moves smoothly but has taken only 20 steps and is still on its way. The single-point run got near the best line within the first pass or two, but its steps are so noisy that it keeps being knocked about and never settles. At 0.03 the noise matters less and the single-point run wins on sheer number of steps. At 0.4 its noise is too much. Mini-batches are the usual compromise: many steps, each accurate enough.',
+  },
+  real: {
+    predict: 'Set the overlap to 1, so the clouds barely overlap. Will the lowest point on the map be closer to the middle than before, or further away?',
+    observe: 'Change the overlap from 2 to 1, then to 3, and watch where the plus sign goes. Train at each setting.',
+    explain: 'Further away, usually right off the map. When the clouds hardly overlap, a line can put nearly every point on the right side, and the loss rewards being confident about it: larger weights push the probabilities closer to 0% and 100%. When the clouds overlap heavily, confidence is punished by all the points on the wrong side, so the best weights are small. The size of the weights is the model\'s confidence.',
+  },
+  reg: {
+    predict: 'Choose L1 and raise the strength a step at a time. Which weight will reach exactly zero first, w<sub>1</sub> or w<sub>2</sub>? Will L2 ever do the same?',
+    observe: 'Train with L1 at 0.4, 0.7, 1 and 1.5. Then switch to L2 and train at the same strengths.',
+    explain: 'The weaker weight, w<sub>2</sub>, goes first: it was contributing least to fitting the data, so it is the cheapest to give up. L1 takes the same fixed amount off every weight at every step, and a small weight cannot stand that for long. L2 never gets there: it takes off an amount in proportion to the weight\'s size, so as a weight gets smaller the pull on it fades away. Lasso chooses features; ridge only quietens them.',
+  },
+};
+
+// Short practical notes, shown at the end of some parts.
+export const PRACTICE_NOTES = {
+  one: {
+    title: 'The learning rate is the first thing to tune',
+    text: 'If the loss jumps about or blows up, the rate is too large: divide it by three or ten. If the loss falls steadily but slowly, it is too small. Rates are tried in multiples, such as 0.001, 0.003, 0.01, 0.03 and so on, because what matters is the rough size, not the exact figure.',
+  },
+  batch: {
+    title: 'Mini-batches and Adam are the usual starting point',
+    text: 'Most real training uses mini-batches of a few dozen to a few hundred points, with Adam or with gradient descent plus momentum. The batch size and the learning rate affect each other, so if one is changed the other often needs changing too.',
+  },
+  reg: {
+    title: 'Put the features on the same scale first',
+    text: 'A penalty treats every weight alike. A feature measured in large numbers needs only a small weight, so it slips past the penalty, while one measured in small numbers is punished for needing a large weight. Rescaling every feature to a similar range before training makes the penalty fair. The strength itself is chosen by trying several and scoring each on data kept back from training.',
+  },
+};

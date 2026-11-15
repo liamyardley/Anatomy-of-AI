@@ -165,16 +165,23 @@ Next, step 3: **regression mode** (one input, a continuous output, click to plac
   2. **Choosing: how settings are picked honestly.** Train/test split, k-fold cross-validation, sweeps, grid search, the bias-variance curve. This applies to every model.
 - **Decision deferred:** build Fitting first as its own page, look at it, and only then decide whether Choosing joins it or becomes a separate lab.
 
-**Lab 2: How a model finds its numbers (fitting)** at `labs/training/` (linked from Deep learning too). Next to be built.
+**Lab 2: How a model finds its numbers (fitting)** at `labs/training/` (linked from Machine learning and Deep learning on the home page, and from Lab 1). Built.
 
 Built in phases, each committed and reviewed, as Lab 1 was:
 - [x] Phase 0, shared engine: the seeded RNG, the number and formula helpers and the training engine moved from `labs/ml/js/` into `assets/js/`, and the labs' shared styles into `assets/css/lab.css`, with Lab 1 still passing its tests and working as before. The **optimiser module** is there too (`assets/js/optimisers.js`): gradient descent, momentum, RMSProp and Adam behind one small interface, pure and unit tested. Not moved yet: the logistic regression model, which stays in Lab 1 until phase 4 needs it.
 - [x] Phase 1, one weight: a tiny dataset and a model with a single number to find. Drag the weight by hand and watch the loss change; try to find the lowest point before pressing Train. Then gradient descent takes steps down the curve. The learning rate goes from crawling, to overshooting, to blowing up.
 - [x] Phase 2, two weights: the loss as a contour map. Click a start point and watch the path. Surfaces: a bowl, a long narrow valley, a saddle, and one with several dips (where the start point decides the answer).
 - [x] Phase 3, optimisers and batch size: race gradient descent, momentum, RMSProp and Adam from the same start. Full batch, mini-batch and single-point updates (smooth against noisy paths).
-- [ ] Phase 4, the real thing: the true loss surface of a logistic regression on a Lab 1 dataset, with the path on the contour map and the boundary moving on the data plot side by side: "this is what Train was doing".
-- [ ] Phase 5, regularisation: the L2 circle and L1 diamond meeting the loss contours, a strength slider, and why L1 (lasso) sets weights to exactly zero while L2 (ridge) only shrinks them. Coefficient paths as the strength grows (ridge shrinks, lasso selects, elastic net compromises).
-- [ ] Phase 6: predict-observe-explain activities, field notes, accessibility and mobile passes, home page link, README.
+- [x] Phase 4, the real thing: the true loss surface of a logistic regression on a Lab 1 dataset, with the path on the contour map and the boundary moving on the data plot side by side: "this is what Train was doing".
+- [x] Phase 5, regularisation: the L2 circle and L1 diamond meeting the loss contours, a strength slider, and why L1 (lasso) sets weights to exactly zero while L2 (ridge) only shrinks them. Coefficient paths as the strength grows (ridge shrinks, lasso selects, elastic net compromises).
+- [x] Phase 6: predict-observe-explain activities, field notes, accessibility and mobile passes, home page link, README.
+
+Notes on what was built (where it differs from, or adds to, the plan):
+- Phase 3: each optimiser in the race has its own learning rate, and the page says the race is not a fair one. A runner counts as arrived after three steps in a row within 0.05 of a flat spot, because RMSProp hovers instead of stopping.
+- Phase 4: the model has no bias, so that its two weights fit on a map; its line always passes through the centre of the data. The page says so. The logistic regression model itself was not moved out of Lab 1: Part 4 has its own small two-weight version (`logistic2.js`).
+- Phase 5: the map uses a two-weight linear model with a mean squared loss (clean elliptical contours), and the sweep uses six features of which three are irrelevant. The elastic net is fixed at half L1, half L2.
+- Phase 6: the notes at the end of some parts are general practical notes labelled "In practice", written by Claude. They are not field notes from coursework; replace or add real ones in `labs/training/content/notes.js` (`PRACTICE_NOTES`).
+- Not done: a check with a screen reader or on a real touch device.
 
 Decided for Lab 2:
 - L1 uses a soft-threshold step after each update, so lasso sets weights to exactly zero.
@@ -250,8 +257,8 @@ Decided for Lab 2:
 
 1. ML Lab 1, phases 1 to 6 (`ML-Lab-brief.md`): done
 2. ML Lab 1, step 1: more parameters, including distance metrics: done, apart from one tidy-up
-3. **ML Lab 2, fitting** (how a model finds its numbers): next
-4. Decide where "choosing settings honestly" lives, then build it
+3. ML Lab 2, fitting (how a model finds its numbers), phases 0 to 6: done
+4. **Decide where "choosing settings honestly" lives, then build it**: next
 5. ML Lab 1, step 2: more models
 6. **Code-along prototype** as its own page (k-NN first): tests the most novel idea before many more labs are built around it
 7. ML Lab 3: unsupervised

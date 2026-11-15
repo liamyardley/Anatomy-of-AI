@@ -175,7 +175,7 @@
     font-weight: 700; font-size: .92rem; text-decoration: none;
     transition: transform .15s ease;
   }
-  .panel .lab-link .try { color: var(--acc, var(--muted)); }
+  .panel .lab-link .try { color: var(--acc, var(--muted)); white-space: nowrap; }
   .panel .lab-link .arrow { margin-left: auto; color: var(--acc, var(--muted)); }
   .panel .lab-link:hover { transform: translateY(-1px); }
   .panel .lab-link:focus-visible { outline: 2px solid var(--acc, var(--muted)); outline-offset: 2px; }
@@ -270,8 +270,12 @@ const REGIONS = {
     name: "Machine learning",
     crumb: "Part of AI",
     varname: "--ml-line",
-    // Optional link to a hands-on lab. Any region can have one: add a "lab" entry like this.
-    lab: { href: "labs/ml/index.html", label: "Machine Learning Lab" },
+    // Optional links to hands-on labs. Any region can have them: add a "lab" entry
+    // like this, either one { href, label } or a list of them.
+    lab: [
+      { href: "labs/ml/index.html", label: "Machine Learning Lab" },
+      { href: "labs/training/index.html", label: "How a model finds its numbers" },
+    ],
     blurb: "Instead of writing the rules by hand, you show the machine lots of examples and it works out the rules itself. Everything in this circle learns from data, and plenty of it has nothing to do with neural networks.",
     examples: [
       ["Regression", "Fitting a best-fit line through past data to predict a number or a yes/no outcome. Used in credit scoring and insurance pricing."],
@@ -287,6 +291,7 @@ const REGIONS = {
     name: "Deep learning",
     crumb: "Part of machine learning",
     varname: "--dl-line",
+    lab: { href: "labs/training/index.html", label: "How a model finds its numbers" },
     blurb: "Machine learning using neural networks with many layers, loosely inspired by the brain. With enough data and computing power it became the leading approach for images, sound and language, but it is still one branch of machine learning among several.",
     examples: [
       ["Convolutional Neural Networks (CNNs)", "Networks that scan an image in small patches to spot edges, then shapes, then whole objects. They sparked the image-recognition breakthrough of 2012."],
@@ -399,7 +404,7 @@ function renderPanel(key) {
     <p class="crumb"><span class="dot" style="background:${color}"></span>${r.crumb}</p>
     <h2>${r.name}</h2>
     <p class="blurb">${r.blurb}</p>
-    ${r.lab ? `<a class="lab-link" href="${r.lab.href}" style="--acc:${color}"><span class="try">Try it:</span> ${r.lab.label}<span class="arrow" aria-hidden="true">&rarr;</span></a>` : ''}
+    ${[].concat(r.lab || []).map((lab) => `<a class="lab-link" href="${lab.href}" style="--acc:${color}"><span class="try">Try it:</span> ${lab.label}<span class="arrow" aria-hidden="true">&rarr;</span></a>`).join('')}
     <h3>Examples</h3>
     <ul style="--acc:${color}">${items}</ul>
     ${r.note ? `<p class="note">${r.note}</p>` : ''}

@@ -72,3 +72,34 @@
 .split.spaced { margin-top: 16px; }
 #raceScroll, #batchScroll { margin-top: 18px; }
 .data-table th .swatch { margin-right: 6px; }
+
+/* --- Part 4: the real model --- */
+.chart .blue-side { stroke: var(--class-blue); stroke-width: 2.5; stroke-linecap: round; }
+.chart .blue-head { fill: var(--class-blue); }
+.chart .centre-dot { fill: var(--ink); stroke: var(--surface); stroke-width: 1; }
+
+/* --- Part 5: regularisation --- */
+.chart .zero-line { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 2 4; }
+.chart .zero-line.strong { stroke-dasharray: none; opacity: .7; }
+.chart .penalty-shape { fill: var(--cv-fill); fill-opacity: .22; stroke: var(--cv-line); stroke-width: 2; stroke-linejoin: round; }
+.chart .coef { fill: none; stroke: var(--ink); stroke-width: 2; stroke-linejoin: round; }
+.chart .coef.idle { stroke: var(--muted); stroke-dasharray: 5 4; stroke-width: 1.6; }
+.chart .coef-label { fill: var(--ink); font-size: 9px; font-weight: 700; font-family: 'Karla', system-ui, sans-serif; }
+.chart .coef-label.idle { fill: var(--muted); }
+.sweeps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px 28px; margin-top: 6px; }
+@media (max-width: 900px) { .sweeps { grid-template-columns: minmax(0, 1fr); } }
+#regSweepBtn { margin-top: 4px; }
+
+/* --- activities and practical notes --- */
+.block-body > [id^="activity-"]:empty, .block-body > [id^="practice-"]:empty { display: none; }
+.activity .steps p { margin: 0; }
+.swatch { width: 44px; }
+
+/* --- small screens --- */
+/* Wide tables scroll sideways instead of squeezing their columns. */
+.table-scroll .data-table { min-width: 460px; }
+.table-scroll .data-table td.num { white-space: nowrap; }
+@media (max-width: 600px) {
+  .chart .tick { font-size: 11px; }
+  .chart .axis-title, .chart .coef-label { font-size: 12px; }
+}

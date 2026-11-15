@@ -12,7 +12,11 @@ import {
 import { createRng } from '../../../assets/js/rng.js';
 import { startPartTwo } from './part2.js';
 import { startPartThree } from './part3.js';
-import { ONE_WEIGHT, TRAIN_COPY, RUNS_COPY, SEED_NOTE } from '../content/notes.js';
+import { startPartFour } from './part4.js';
+import { startPartFive } from './part5.js';
+import {
+  ONE_WEIGHT, TRAIN_COPY, RUNS_COPY, SEED_NOTE, ACTIVITIES, PRACTICE_NOTES,
+} from '../content/notes.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -390,3 +394,27 @@ $('loadNotice').remove(); // the scripts loaded, so the server note is not neede
 newData(state.seed);
 startPartTwo();
 startPartThree();
+startPartFour();
+startPartFive();
+
+// Predict, observe, explain: one activity for each part, and a practical
+// note for some. The wording is in content/notes.js.
+for (const [key, activity] of Object.entries(ACTIVITIES)) {
+  $(`activity-${key}`).innerHTML = `<details class="activity">
+    <summary>Activity: predict, observe, explain</summary>
+    <ol class="steps">
+      <li><strong>Predict.</strong> ${activity.predict}</li>
+      <li><strong>Observe.</strong> ${activity.observe}</li>
+      <li><strong>Explain.</strong> Decide for yourself what happened and why. Then check.
+        <details class="reveal"><summary>Reveal the explanation</summary><p>${activity.explain}</p></details>
+      </li>
+    </ol>
+  </details>`;
+}
+for (const [key, note] of Object.entries(PRACTICE_NOTES)) {
+  $(`practice-${key}`).innerHTML = `<aside class="field-note" aria-label="Practical note">
+    <p class="crumb">In practice</p>
+    <p class="field-note-title">${note.title}</p>
+    <p>${note.text}</p>
+  </aside>`;
+}

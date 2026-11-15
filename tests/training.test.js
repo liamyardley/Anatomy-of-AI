@@ -8,6 +8,13 @@ import {
 } from '../labs/training/js/oneweight.js';
 import { SURFACES, RANGE, spotAt, createDescent2, createRace } from '../labs/training/js/twoweights.js';
 import { makeScatter, lineSurface, gradientOn, createBatchRace } from '../labs/training/js/batches.js';
+import { centreData, logisticSurface, accuracy } from '../labs/training/js/logistic2.js';
+import {
+  makeRegression, dataLoss, dataGradient, dataSurface, penalty, softThreshold,
+  createProximal, sweep, penaltyOutline,
+} from '../labs/training/js/regularise.js';
+import { createDataset, samplePoints } from '../labs/ml/js/datasets.js';
+import { createRng } from '../assets/js/rng.js';
 
 const close = (a, b, tolerance = 1e-9) => Math.abs(a - b) < tolerance;
 
@@ -365,4 +372,140 @@ test('batch race: the shuffles come from the seed, and stepping equals finish', 
   let result = stepped.step();
   while (!result.done) result = stepped.step();
   assert.deepEqual(make().finish().snapshot, result.snapshot);
+});
+
+// ===== the real logistic loss surface =====
+
+const clouds = (seed, noise) => {
+  const points = samplePoints(createDataset('clouds', seed), 80, noise, createRng(seed, 'points'));
+  return centreData(points);
+};
+
+test('logistic surface: centred data, a gradient that matches the loss, zero at the best weights', () => {
+  const { X, y, centre } = clouds(42, 2);
+  assert.equal(X.length, 80);
+  assert.ok(Math.abs(centre[0]) < 1 && Math.abs(centre[1]) < 1);
+  const surface = logisticSurface(X, y);
+  assert.ok(close(surface.loss(0, 0), Math.log(2), 1e-9)); // every point at 50%
+  for (const [a, b] of [[1, -2], [-4, 3], [0.5, 0.5]]) {
+    const [ga, gb] = surface.gradient(a, b);
+    const ma = (surface.loss(a + 1e-6, b) - surface.loss(a - 1e-6, b)) / 2e-6;
+    const mb = (surface.loss(a, b + 1e-6) - surface.loss(a, b - 1e-6)) / 2e-6;
+    assert.ok(close(ga, ma, 1e-6) && close(gb, mb, 1e-6));
+  }
+  assert.ok(surface.best);
+  assert.ok(Math.hypot(...surface.gradient(...surface.best)) < 1e-8);
+  assert.ok(surface.loss(...surface.best) < surface.loss(0, 0));
+  assert.ok(accuracy(surface.best, X, y) > 0.7);
+  assert.equal(accuracy([0, 0], X, y) <= 1, true);
+});
+
+test('logistic surface: gradient descent from zero reaches the best weights', () => {
+  for (const seed of [42, 7, 3]) {
+    const { X, y } = clouds(seed, 2);
+    const surface = logisticSurface(X, y);
+    const end = createDescent2({ surface, start: [0, 0], learningRate: 10, maxSteps: 300 }).finish().snapshot;
+    assert.equal(end.outcome, 'settled', `seed ${seed}`);
+    assert.ok(Math.hypot(end.w[0] - surface.best[0], end.w[1] - surface.best[1]) < 0.05, `seed ${seed}`);
+    assert.equal(end.spot.kind, 'lowest');
+  }
+});
+
+test('logistic surface: clouds that overlap less need larger weights', () => {
+  const size = (noise) => Math.hypot(...logisticSurface(...Object.values(clouds(42, noise)).slice(0, 2)).best);
+  assert.ok(size(1) > size(2) && size(2) > size(3));
+});
+
+test('logistic surface: perfectly separable data has no lowest point', () => {
+  const X = [[-1, 0.2], [-0.5, -0.3], [0.6, 0.1], [1, -0.2]];
+  const surface = logisticSurface(X, [0, 0, 1, 1]);
+  assert.equal(surface.best, null);
+  assert.deepEqual(surface.spots, []);
+  assert.ok(surface.loss(20, 0) < surface.loss(5, 0));
+});
+
+// ===== regularisation =====
+
+test('regression data: seeded, and the loss gradient matches the loss', () => {
+  assert.deepEqual(makeRegression(42), makeRegression(42));
+  assert.notDeepEqual(makeRegression(42).y, makeRegression(43).y);
+  const { X, y } = makeRegression(42);
+  assert.equal(X.length, 60);
+  const w = [0.7, -0.4];
+  const g = dataGradient(w, X, y);
+  const m = (dataLoss([w[0] + 1e-6, w[1]], X, y) - dataLoss([w[0] - 1e-6, w[1]], X, y)) / 2e-6;
+  assert.ok(close(g[0], m, 1e-6));
+  const surface = dataSurface(X, y);
+  assert.ok(Math.hypot(...surface.gradient(...surface.best)) < 1e-3);
+});
+
+test('penalties: L2 squares, L1 adds sizes, the elastic net is half of each', () => {
+  assert.equal(penalty('none', [3, -4]), 0);
+  assert.equal(penalty('l2', [3, -4]), 12.5);
+  assert.equal(penalty('l1', [3, -4]), 7);
+  assert.equal(penalty('elastic', [3, -4]), 9.75);
+  assert.equal(softThreshold(0.5, 0.2), 0.3);
+  assert.ok(close(softThreshold(-0.5, 0.2), -0.3));
+  assert.equal(softThreshold(0.1, 0.2), 0);
+});
+
+test('L2 shrinks both weights but never to zero; L1 sets the weaker one to exactly zero', () => {
+  for (const seed of [42, 7, 3]) {
+    const { X, y } = makeRegression(seed);
+    const end = (kind, strength) => createProximal({ X, y, kind, strength, start: [2, -1] }).finish().snapshot;
+    const plain = end('none', 0);
+    const ridge = end('l2', 1.5);
+    const lasso = end('l1', 1.5);
+    assert.equal(ridge.outcome, 'settled');
+    assert.ok(Math.abs(ridge.w[0]) < Math.abs(plain.w[0]) && Math.abs(ridge.w[1]) < Math.abs(plain.w[1]), `seed ${seed}`);
+    assert.ok(ridge.w[0] !== 0 && ridge.w[1] !== 0);
+    assert.equal(ridge.zeros, 0);
+    assert.equal(lasso.w[1], 0, `seed ${seed}`);
+    assert.ok(lasso.w[0] > 0.3);
+    assert.equal(lasso.zeros, 1);
+    // The penalty costs some fit to the data.
+    assert.ok(ridge.loss > plain.loss && lasso.loss > plain.loss);
+  }
+});
+
+test('a stronger penalty gives smaller weights, and no penalty at all gives the best fit', () => {
+  const { X, y } = makeRegression(42);
+  const surface = dataSurface(X, y);
+  const size = (kind, strength) => Math.hypot(...createProximal({ X, y, kind, strength, start: [0, 0] }).finish().snapshot.w);
+  for (const kind of ['l2', 'l1', 'elastic']) {
+    assert.ok(size(kind, 0.1) > size(kind, 0.7) && size(kind, 0.7) > size(kind, 2.5), kind);
+    const free = createProximal({ X, y, kind, strength: 0, start: [0, 0], maxSteps: 2000 }).finish().snapshot.w;
+    assert.ok(Math.hypot(free[0] - surface.best[0], free[1] - surface.best[1]) < 1e-3, kind);
+  }
+});
+
+test('sweep: lasso drops the irrelevant features first, ridge keeps them all', () => {
+  const truth = [2, -1.5, 1, 0, 0, 0];
+  for (const seed of [42, 7, 3]) {
+    const { X, y } = makeRegression(seed, { truth, noise: 0.8 });
+    const strengths = [0, 0.3, 1, 8];
+    const ridge = sweep({ X, y, kind: 'l2', strengths });
+    const lasso = sweep({ X, y, kind: 'l1', strengths });
+    assert.ok(ridge.every((r) => r.zeros === 0), `seed ${seed}`);
+    assert.equal(lasso[0].zeros, 0);
+    // At a moderate strength the three useful features survive.
+    const mid = lasso[1];
+    assert.ok(mid.w[0] !== 0 && mid.w[1] !== 0 && mid.w[2] !== 0, `seed ${seed}`);
+    assert.ok(mid.zeros >= 2, `seed ${seed}: ${mid.zeros}`);
+    assert.equal(lasso[3].zeros, 6);
+  }
+});
+
+test('penalty outlines: a circle for L2, a diamond for L1, both through the weights', () => {
+  const w = [1.2, 0.5];
+  const circle = penaltyOutline('l2', w);
+  for (const [a, b] of circle) assert.ok(close(Math.hypot(a, b), Math.hypot(...w), 1e-6));
+  const diamond = penaltyOutline('l1', w);
+  for (const [a, b] of diamond) assert.ok(close(Math.abs(a) + Math.abs(b), 1.7, 1e-6));
+  // The diamond's corners sit on the axes.
+  assert.ok(close(diamond[0][0], 1.7, 1e-6) && close(diamond[0][1], 0, 1e-6));
+  const rounded = penaltyOutline('elastic', w);
+  for (const [a, b] of rounded) assert.ok(close(penalty('elastic', [a, b]), penalty('elastic', w), 1e-6));
+  assert.deepEqual(penaltyOutline('none', w), []);
+  assert.deepEqual(penaltyOutline('l1', [0, 0]), []);
 });

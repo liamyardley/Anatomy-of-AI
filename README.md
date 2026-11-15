@@ -30,7 +30,7 @@ Every region sits inside artificial intelligence, but the nesting is deliberatel
 
 ## The labs
 
-The diagram is the map; the labs are where you get your hands on the ideas. Each region of the diagram will eventually link to a lab of its own. The first is built:
+The diagram is the map; the labs are where you get your hands on the ideas. Each region of the diagram will eventually link to a lab of its own. Two are built:
 
 ### Machine Learning Lab (`labs/ml/`)
 
@@ -45,6 +45,18 @@ Pick a dataset of red and blue points, choose a model, set its parameters, press
 
 To reach it from the home page, select the Machine learning region and follow the "Try it" link.
 
+### How a model finds its numbers (`labs/training/`)
+
+The Machine Learning Lab shows what a trained model does. This lab slows down the moment of training itself, in five parts:
+
+1. **One number to find.** Drag a single weight by hand and watch the loss (a measure of how wrong the model is) change, then let **gradient descent** find the lowest point. The learning rate goes from crawling, to overshooting, to blowing up.
+2. **Two numbers to find.** The loss becomes a landscape, drawn as a contour map. Choose a start and watch the path on a bowl, a narrow valley, a saddle and a surface with several dips, where the start decides the answer.
+3. **Better ways to step.** Race four **optimisers** (gradient descent, momentum, RMSProp and Adam) from the same start, and compare full-batch, mini-batch and single-point training on the same data.
+4. **The real thing.** The true loss surface of a logistic regression on the Machine Learning Lab's Two clouds dataset, with the path on the map and the boundary turning on the data side by side.
+5. **Holding the weights back.** Regularisation: the L2 circle and the L1 diamond meeting the loss contours, and a sweep showing ridge shrinking weights while lasso sets them to exactly zero.
+
+Every part has a predict, observe, explain activity. To reach the lab from the home page, select the Machine learning or Deep learning region, or follow the link under the Train buttons in the Machine Learning Lab.
+
 ## Running it locally
 
 There is nothing to install or build.
@@ -57,7 +69,7 @@ There is nothing to install or build.
 python -m http.server
 ```
 
-Then visit `http://localhost:8000/` for the home page or `http://localhost:8000/labs/ml/` for the Machine Learning Lab. Any other static web server works just as well, and so does GitHub Pages.
+Then visit `http://localhost:8000/` for the home page `http://localhost:8000/labs/ml/` for the Machine Learning Lab, or `http://localhost:8000/labs/training/` for How a model finds its numbers. Any other static web server works just as well, and so does GitHub Pages.
 
 Fonts load from Google Fonts, and the lab's formulas are drawn by KaTeX, also loaded from the web. Without a connection the pages fall back to your system fonts and the formulas appear as plain text.
 
@@ -92,7 +104,11 @@ node --test
 | `labs/ml/js/charts.js`, `assets/js/format.js` | Small helpers for charts, numbers and formulas |
 | `labs/ml/js/models/` | The four models: `logistic.js`, `knn.js`, `tree.js`, `forest.js`. Plain code with no page access, so they can be tested on their own |
 | `labs/ml/js/panels/` | Each model's part of the mathematics panel |
-| `labs/training/` | A second lab, under construction: how a model finds its numbers |
+| `labs/training/index.html` | The second lab's page: How a model finds its numbers |
+| `labs/training/content/notes.js` | All of that lab's explanatory text |
+| `labs/training/js/main.js`, `part2.js` to `part5.js` | Wiring for each of the lab's five parts |
+| `labs/training/js/oneweight.js`, `twoweights.js`, `batches.js`, `logistic2.js`, `regularise.js` | The models behind the parts: plain code with no page access, so they can be tested on their own |
+| `labs/training/js/mapview.js`, `ui.js` | The contour map and small pieces of wiring shared by the parts |
 | `plan.md` | The plan for the whole project, with what is built and what is next |
 | `tests/` | Unit tests, run with `node --test` |
 | `package.json` | Tells Node.js how to read the scripts; there are no dependencies |

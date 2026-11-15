@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="A hands-on lab showing how a machine learning model finds its numbers: drag a weight yourself, then watch gradient descent step downhill to the answer, first along a curve and then across a contour map.">
+<meta name="description" content="A hands-on lab showing how a machine learning model finds its numbers: drag a weight yourself, then watch gradient descent step downhill to the answer, first along a curve and then across a contour map, with optimisers, batch sizes and regularisation along the way.">
 <title>How a model finds its numbers | Anatomy of AI</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Karla:ital,wght@0,400;0,600;0,700;1,400&display=swap">
@@ -25,7 +25,7 @@
   <div class="intro">
     <h1>How a model finds its numbers</h1>
     <p class="lede">In the <a href="../ml/index.html">Machine Learning Lab</a> you pressed <strong>Train</strong> and a model found its own numbers. This lab slows that moment down to show what is happening.</p>
-    <p class="lede">Part 1 is the smallest case there is: a model with <strong>one number to find</strong>. Try to find it yourself first, then watch the method a computer uses. Part 2 adds a second number, and the loss becomes a landscape to walk down. Part 3 tries cleverer ways of walking.</p>
+    <p class="lede">Part 1 is the smallest case there is: a model with <strong>one number to find</strong>. Try to find it yourself first, then watch the method a computer uses. Part 2 adds a second number, and the loss becomes a landscape to walk down. Part 3 tries cleverer ways of walking. Part 4 does it all on a real model, and Part 5 shows how training is held in check.</p>
   </div>
 
   <!-- Shown until the scripts load. They cannot load when the page is opened
@@ -157,6 +157,8 @@
       </div>
       <p class="small-print" id="runsEmpty"></p>
       <p class="note plain" id="linkNote"></p>
+      <div id="activity-one"></div>
+      <div id="practice-one"></div>
     </div>
   </section>
   <!-- Part 2: two weights -->
@@ -251,6 +253,7 @@
         </table>
       </div>
       <p class="small-print" id="twoRunsEmpty"></p>
+      <div id="activity-two"></div>
     </div>
   </section>
 
@@ -316,6 +319,7 @@
       </div>
       <p class="small-print" id="raceEmpty"></p>
       <p class="note plain" id="raceFairNote"></p>
+      <div id="activity-race"></div>
 
       <hr class="rule spaced">
 
@@ -394,6 +398,198 @@
         </table>
       </div>
       <p class="small-print" id="batchEmpty"></p>
+      <div id="activity-batch"></div>
+      <div id="practice-batch"></div>
+    </div>
+  </section>
+
+  <!-- Part 4: the real loss surface of a logistic regression -->
+  <section class="card block" aria-labelledby="fourHeading">
+    <header class="block-head">
+      <p class="crumb">Part 4</p>
+      <h2 class="block-title" id="fourHeading">The real thing</h2>
+      <p class="block-sub">The true loss surface of a model from the Machine Learning Lab, and what pressing Train does to it.</p>
+    </header>
+
+    <div class="block-body">
+      <p class="blurb wide" id="realNote"></p>
+      <div class="split spaced">
+        <div>
+          <p class="crumb sub first">The data and the boundary</p>
+          <div class="chart" id="realData"></div>
+          <p class="small-print" id="realDataNote"></p>
+          <div class="facts">
+            <div><span class="fact-label">Weights now</span><span class="num" id="realWeightsOut"></span></div>
+            <div><span class="fact-label">Loss</span><span class="num" id="realLossOut"></span></div>
+            <div><span class="fact-label">Points on the right side</span><span class="num" id="realAccuracyOut"></span></div>
+          </div>
+          <div class="params">
+            <div class="param">
+              <div class="field">
+                <label for="realOverlap">Overlap between the clouds <output id="realOverlapOut" for="realOverlap"></output></label>
+                <input id="realOverlap" type="range" min="0" max="3" step="1">
+              </div>
+              <details class="explain"><summary>What does this do?</summary><p id="realOverlapNote"></p></details>
+            </div>
+          </div>
+
+          <div class="data-controls">
+            <div class="field field-seed">
+              <label for="realSeed">Seed</label>
+              <input id="realSeed" type="number" min="0" max="999999" step="1" inputmode="numeric">
+            </div>
+            <button type="button" id="realNewBtn" class="btn">New data</button>
+          </div>
+          <p class="small-print" id="realSeedNote"></p>
+
+        </div>
+
+        <div>
+          <p class="crumb sub first">The loss as a map</p>
+          <div class="map chart" id="realMap" tabindex="0" role="group" aria-label="Loss map for the logistic regression's two weights. Click, or use the arrow keys, to choose where training starts.">
+            <canvas id="realCanvas" width="640" height="640" aria-hidden="true"></canvas>
+            <div id="realOverlay"></div>
+          </div>
+          <p class="small-print" id="realMapNote"></p>
+
+          <div class="train-bar" role="group" aria-label="Training the logistic regression">
+            <button type="button" id="realTrainBtn" class="btn primary">Train</button>
+            <button type="button" id="realPauseBtn" class="btn" disabled>Pause</button>
+            <button type="button" id="realStepBtn" class="btn">Step</button>
+            <button type="button" id="realSkipBtn" class="btn" disabled>Skip</button>
+            <fieldset class="segmented speed">
+              <legend class="visually-hidden">Training speed</legend>
+              <label><input type="radio" name="realSpeed" value="slow"><span>Slow</span></label>
+              <label><input type="radio" name="realSpeed" value="normal" checked><span>Normal</span></label>
+              <label><input type="radio" name="realSpeed" value="fast"><span>Fast</span></label>
+            </fieldset>
+          </div>
+          <p class="train-message" id="realMessage"></p>
+          <p class="visually-hidden" id="realAnnounce" aria-live="polite"></p>
+
+          <div class="params">
+            <div class="param">
+              <div class="field">
+                <label for="realRate">Learning rate <output id="realRateOut" for="realRate"></output></label>
+                <input id="realRate" type="range" min="0" max="4" step="1">
+              </div>
+              <details class="explain"><summary>What does this do?</summary><p id="realRateNote"></p></details>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <hr class="rule spaced">
+
+      <div class="split">
+        <div>
+          <p class="crumb">The mathematics</p>
+          <h3 class="card-title">The model and its loss</h3>
+          <div class="formula" id="realModelTex"></div>
+          <div class="formula" id="realLossTex"></div>
+          <p class="small-print" id="realModelKey"></p>
+        </div>
+        <div>
+          <p class="crumb">The next step from here</p>
+          <div class="formula fitted" id="realNextTex"></div>
+          <p class="note plain" id="realLinkNote"></p>
+        </div>
+      </div>
+      <div id="activity-real"></div>
+    </div>
+  </section>
+
+  <!-- Part 5: regularisation -->
+  <section class="card block" aria-labelledby="fiveHeading">
+    <header class="block-head">
+      <p class="crumb">Part 5</p>
+      <h2 class="block-title" id="fiveHeading">Holding the weights back</h2>
+      <p class="block-sub">Regularisation: a penalty for large weights, and why one kind of penalty switches features off altogether.</p>
+    </header>
+
+    <div class="block-body">
+      <p class="blurb wide" id="regNote"></p>
+      <div class="split spaced">
+        <div>
+          <p class="crumb sub first">The data loss and the penalty</p>
+          <div class="map chart" id="regMap" tabindex="0" role="group" aria-label="Loss map with the penalty's shape. Click, or use the arrow keys, to choose where training starts.">
+            <canvas id="regCanvas" width="640" height="640" aria-hidden="true"></canvas>
+            <div id="regOverlay"></div>
+          </div>
+          <p class="small-print" id="regMapNote"></p>
+        </div>
+
+        <div>
+          <p class="crumb sub first">The penalty</p>
+          <fieldset class="segmented surfaces">
+            <legend class="visually-hidden">Kind of penalty</legend>
+            <label><input type="radio" name="regKind" value="none"><span>None</span></label>
+            <label><input type="radio" name="regKind" value="l2"><span>L2 (ridge)</span></label>
+            <label><input type="radio" name="regKind" value="l1" checked><span>L1 (lasso)</span></label>
+            <label><input type="radio" name="regKind" value="elastic"><span>Elastic net</span></label>
+          </fieldset>
+          <p class="blurb" id="regShapeNote"></p>
+          <div class="formula" id="regTex"></div>
+
+          <div class="train-bar" role="group" aria-label="Training with a penalty">
+            <button type="button" id="regTrainBtn" class="btn primary">Train</button>
+            <button type="button" id="regPauseBtn" class="btn" disabled>Pause</button>
+            <button type="button" id="regStepBtn" class="btn">Step</button>
+            <button type="button" id="regSkipBtn" class="btn" disabled>Skip</button>
+            <fieldset class="segmented speed">
+              <legend class="visually-hidden">Training speed</legend>
+              <label><input type="radio" name="regSpeed" value="slow"><span>Slow</span></label>
+              <label><input type="radio" name="regSpeed" value="normal" checked><span>Normal</span></label>
+              <label><input type="radio" name="regSpeed" value="fast"><span>Fast</span></label>
+            </fieldset>
+          </div>
+          <p class="train-message" id="regMessage"></p>
+          <p class="visually-hidden" id="regAnnounce" aria-live="polite"></p>
+
+          <div class="facts">
+            <div><span class="fact-label">Weight w&#8321;</span><span class="num" id="regW1Out"></span></div>
+            <div><span class="fact-label">Weight w&#8322;</span><span class="num" id="regW2Out"></span></div>
+            <div><span class="fact-label">Data loss</span><span class="num" id="regLossOut"></span></div>
+          </div>
+          <p class="small-print">Best fit with no penalty: <span id="regBestOut"></span></p>
+          <div class="params">
+            <div class="param" id="regStrengthField">
+              <div class="field">
+                <label for="regStrength">Strength &lambda; <output id="regStrengthOut" for="regStrength"></output></label>
+                <input id="regStrength" type="range" min="0" max="8" step="1">
+              </div>
+              <details class="explain"><summary>What does this do?</summary><p id="regStrengthNote"></p></details>
+            </div>
+          </div>
+
+          <div class="data-controls">
+            <div class="field field-seed">
+              <label for="regSeed">Seed</label>
+              <input id="regSeed" type="number" min="0" max="999999" step="1" inputmode="numeric">
+            </div>
+            <button type="button" id="regNewBtn" class="btn">New data</button>
+          </div>
+          <p class="small-print" id="regSeedNote"></p>
+
+        </div>
+      </div>
+      <p class="note plain" id="regWhyNote"></p>
+
+      <hr class="rule spaced">
+
+      <p class="crumb">Many weights</p>
+      <h3 class="card-title">Shrink or select?</h3>
+      <p class="blurb wide" id="regSweepIntro"></p>
+      <button type="button" id="regSweepBtn" class="btn primary">Run the sweep</button>
+      <p class="small-print" id="regSweepLegend"></p>
+      <div class="sweeps">
+        <div><p class="crumb sub" id="regSweepTitle-l2"></p><div class="chart" id="regSweep-l2"></div><p class="small-print" id="regSweepNote-l2" aria-live="polite"></p></div>
+        <div><p class="crumb sub" id="regSweepTitle-l1"></p><div class="chart" id="regSweep-l1"></div><p class="small-print" id="regSweepNote-l1"></p></div>
+        <div><p class="crumb sub" id="regSweepTitle-elastic"></p><div class="chart" id="regSweep-elastic"></div><p class="small-print" id="regSweepNote-elastic"></p></div>
+      </div>
+      <p class="note plain" id="regLinkNote"></p>
+      <div id="activity-reg"></div>
+      <div id="practice-reg"></div>
     </div>
   </section>
 </main>

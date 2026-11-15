@@ -4,20 +4,17 @@
 // Page wiring only. The models are in twoweights.js and batches.js.
 
 import { createEngine } from '../../../assets/js/engine.js';
-import { fmt, prefersReducedMotion } from '../../../assets/js/format.js';
+import { fmt } from '../../../assets/js/format.js';
 import { OPTIMISERS } from '../../../assets/js/optimisers.js';
 import { SURFACES, RANGE, createRace } from './twoweights.js';
 import {
   SLOPE_RANGE, INTERCEPT_RANGE, makeScatter, lineSurface, createBatchRace,
 } from './batches.js';
 import { BOX, createMapView } from './mapview.js';
+import {
+  $, pair, GRID, snapTo, onMap, startMark, trainBar,
+} from './ui.js';
 import { RACE_COPY, BATCH_COPY } from '../content/notes.js';
-
-const $ = (id) => document.getElementById(id);
-const pair = ([a, b]) => `(${fmt(a)}, ${fmt(b)})`;
-const GRID = 0.05;
-const snapTo = (v, [low, high]) => Math.max(low, Math.min(high, Math.round(v / GRID) * GRID));
-const onMap = ([a, b], [x0, x1], [y0, y1]) => a >= x0 && a <= x1 && b >= y0 && b <= y1;
 
 // The shape drawn at the head of each path, so colour is never the only cue.
 const HEADS = {
@@ -28,39 +25,6 @@ const HEADS = {
 };
 const head = (shape, x, y, cls) => `<g class="head ${cls}">${HEADS[shape](Number(x.toFixed(1)), Number(y.toFixed(1)))}</g>`;
 const swatch = (shape, cls) => `<svg class="swatch" viewBox="0 0 34 14" aria-hidden="true"><line class="lane ${cls}" x1="1" y1="7" x2="33" y2="7"/>${head(shape, 17, 7, cls)}</svg>`;
-const startMark = (x, y) => `<path class="start-mark" d="M${x - 5} ${y - 5}l10 10m0 -10l-10 10"/>`;
-
-// Wire up a Train / Pause / Step / Skip bar and its speed buttons.
-function trainBar(prefix, engine, speeds, begin, getSpeed, setSpeed) {
-  const refresh = () => {
-    $(`${prefix}PauseBtn`).disabled = !engine.active;
-    $(`${prefix}PauseBtn`).textContent = engine.active && !engine.running ? 'Resume' : 'Pause';
-    $(`${prefix}StepBtn`).disabled = engine.running;
-    $(`${prefix}SkipBtn`).disabled = !engine.active;
-  };
-  $(`${prefix}TrainBtn`).addEventListener('click', () => {
-    begin(false);
-    if (prefersReducedMotion()) engine.skip();
-  });
-  $(`${prefix}PauseBtn`).addEventListener('click', () => {
-    if (engine.running) engine.pause(); else engine.resume();
-    refresh();
-  });
-  $(`${prefix}StepBtn`).addEventListener('click', () => {
-    if (!engine.active) begin(true);
-    engine.stepOnce();
-    refresh();
-  });
-  $(`${prefix}SkipBtn`).addEventListener('click', () => engine.skip());
-  for (const radio of document.querySelectorAll(`input[name="${prefix}Speed"]`)) {
-    if (radio.checked) setSpeed(radio.value);
-    radio.addEventListener('change', () => {
-      setSpeed(radio.value);
-      engine.setSpeed(speeds[getSpeed()]);
-    });
-  }
-  return refresh;
-}
 
 // ===================================================================
 // The race
