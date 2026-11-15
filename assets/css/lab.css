@@ -44,6 +44,7 @@ h1 {
 .lede { color: var(--muted); margin: 0; max-width: 62ch; }
 .lede strong { color: var(--ink); font-weight: 600; }
 .lede + .lede { margin-top: 10px; }
+.lede a { color: var(--ink); font-weight: 600; text-decoration-color: var(--ml-line); text-underline-offset: 3px; }
 
 .notice {
   margin: 0 0 20px; padding: 12px 14px; border-radius: 12px; font-size: .9rem;

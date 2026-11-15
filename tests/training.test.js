@@ -119,6 +119,27 @@ test('gradient descent: small rates crawl, rates between 1 and 2 overshoot but s
   assert.ok(blown.history[3].loss > blown.history[1].loss);
 });
 
+test('gradient descent: running out of steps says why', () => {
+  const { points } = makeLineData(5);
+  const end = (learningRate, start = 0) => createDescent({ points, start, learningRate }).finish().snapshot;
+  // Just above 2 the loss grows too slowly to blow up within the limit,
+  // but it is still growing: that is a rate that is too large, not too small.
+  assert.equal(end(2.05).outcome, 'diverged');
+  assert.equal(end(2.05).step, 60);
+  // Just below 2 it is closing in, jumping from side to side.
+  assert.equal(end(1.9).outcome, 'bouncing');
+  // A tiny rate is still creeping from one side.
+  assert.equal(end(0.01).outcome, 'limit');
+});
+
+test('gradient descent: a start further from the bottom needs more steps', () => {
+  const { points } = makeLineData(5);
+  const best = bestWeight(points);
+  const steps = (start) => createDescent({ points, start, learningRate: 0.3 }).finish().snapshot.step;
+  assert.ok(steps(best + 2) > steps(best + 0.2));
+  assert.ok(steps(best + 0.2) > steps(best + 0.001));
+});
+
 test('gradient descent: stepping to the end equals finish, and the history adds up', () => {
   const { points } = makeLineData(11);
   const stepped = createDescent({ points, start: 3.5, learningRate: 0.6 });

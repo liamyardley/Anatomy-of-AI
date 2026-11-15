@@ -73,8 +73,11 @@ export function bestWeight(points) {
 // A snapshot is { step, w, loss, gradient, move, outcome }. `outcome` is
 // null while it is still going, then one of:
 //   'settled'   the steps became too small to matter
-//   'diverged'  the loss blew up: every step made things worse
-//   'limit'     it ran out of steps before settling
+//   'diverged'  the loss was still growing when it stopped: steps too big
+//   'bouncing'  out of steps while jumping from side to side, getting
+//               closer each time: steps too big to settle quickly
+//   'limit'     out of steps while still creeping towards the bottom:
+//               steps too small
 export function createDescent({
   points, start = 0, learningRate = 0.3, optimiser = 'gd', maxSteps = 60, tolerance = 1e-4,
 }) {
@@ -94,7 +97,13 @@ export function createDescent({
     w = next;
     if (!Number.isFinite(w) || loss(w, points) > 1e6) outcome = 'diverged';
     else if (Math.abs(move) < tolerance) outcome = 'settled';
-    else if (history.length >= maxSteps) outcome = 'limit';
+    else if (history.length >= maxSteps) {
+      // Out of steps. Why? Look at the last two steps.
+      const before = history[history.length - 1];
+      if (loss(w, points) > before.loss) outcome = 'diverged';
+      else if (before.move !== null && move * before.move < 0) outcome = 'bouncing';
+      else outcome = 'limit';
+    }
     const snapshot = record(move);
     history.push(snapshot);
     return { done: outcome !== null, snapshot };

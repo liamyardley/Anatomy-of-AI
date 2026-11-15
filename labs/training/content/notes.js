@@ -24,8 +24,22 @@ export const TRAIN_COPY = {
   stale: 'Something changed: press Train to start again from the current weight',
   progress: (s) => `Step ${s.step}: weight ${s.w.toFixed(2)}, loss ${s.loss.toFixed(3)}`,
   settled: (s) => `Settled after ${s.step} ${s.step === 1 ? 'step' : 'steps'}: weight ${s.w.toFixed(2)}, loss ${s.loss.toFixed(3)}.`,
-  diverged: (s) => `Stopped after ${s.step} steps: every step made the loss bigger. The learning rate is too large.`,
-  limit: (s) => `Stopped after ${s.step} steps without settling (weight ${s.w.toFixed(2)}, loss ${s.loss.toFixed(3)}). The learning rate is too small to get there in time.`,
+  diverged: (s) => `Stopped after ${s.step} steps: each step jumped past the bottom and landed further away, so the loss kept growing. The learning rate is too large. Try a smaller one.`,
+  bouncing: (s) => `Stopped after ${s.step} steps without settling (weight ${s.w.toFixed(2)}, loss ${s.loss.toFixed(3)}). Each step jumps past the bottom and lands a little closer, but too slowly. The learning rate is too large. Try a smaller one.`,
+  limit: (s) => `Stopped after ${s.step} steps without settling (weight ${s.w.toFixed(2)}, loss ${s.loss.toFixed(3)}). It was still creeping downhill. The learning rate is too small to get there in time. Try a larger one, or start closer.`,
+};
+
+// The table of finished runs, which shows that the starting weight matters.
+export const RUNS_COPY = {
+  intro: 'Every finished run is listed here. <strong>Where you start matters.</strong> Try it: train from one weight, then press <strong>Start somewhere else</strong> (or drag the weight) and train again with the same learning rate. On this curve, which has a single dip, every start that settles ends at the same weight, but a start further from the bottom needs more steps, and with a small learning rate it may not arrive at all. Later parts of this lab have bumpier curves, where the start can change the answer itself.',
+  empty: 'No finished runs yet.',
+  startButton: 'Start somewhere else',
+  results: {
+    settled: 'Settled',
+    diverged: 'Loss kept growing',
+    bouncing: 'Ran out of steps, still bouncing',
+    limit: 'Ran out of steps, still creeping',
+  },
 };
 
 export const SEED_NOTE = 'The points are random, but a computer\'s randomness starts from a number called a seed. The same seed always gives exactly the same points, so a whole class can type in the same seed and see the same thing. <strong>New data</strong> picks a new seed for you.';

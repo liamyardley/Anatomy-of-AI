@@ -1,13 +1,12 @@
 /* The training lab: the few styles it needs on top of assets/css/lab.css. */
 
-.lede a { color: var(--ink); font-weight: 600; text-decoration-color: var(--ml-line); text-underline-offset: 3px; }
-
 .weight-field { margin: 12px 0 14px; }
 .weight-field input[type="range"] { min-height: 32px; }
 .data-controls { display: flex; align-items: flex-end; gap: 10px; margin-top: 4px; }
 .data-controls .field { width: 120px; }
 .facts { margin-top: 10px; }
 .facts + .blurb { margin-top: 14px; }
+#startBtn { margin-top: 4px; }
 .note.plain { font-weight: 400; color: var(--muted); }
 
 /* --- the two charts --- */

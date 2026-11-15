@@ -235,7 +235,7 @@ export const MODEL_NOTES = {
 export const PARAM_NOTES = {
   logistic: {
     degree: 'The degree decides which features the model is given. At 1 it sees only x<sub>1</sub> and x<sub>2</sub>, so its boundary has to be a straight line. From 2 upwards it also gets squares and products such as x<sub>1</sub><sup>2</sup> and x<sub>1</sub>x<sub>2</sub>, which let the boundary curve; a high degree on few points can bend around individual points, so watch training accuracy rise while test accuracy falls.',
-    learningRate: 'The learning rate is the size of each nudge to the weights. A small value learns slowly and may run out of iterations before it settles. A large value learns quickly, and a very large one overshoots, so the loss curve jumps about instead of falling smoothly.',
+    learningRate: 'The learning rate is the size of each nudge to the weights. A small value learns slowly and may run out of iterations before it settles. A large value learns quickly, and a very large one overshoots, so the loss curve jumps about instead of falling smoothly. To see this one step at a time, try <a href="../training/index.html">How a model finds its numbers</a>.',
     l2: 'Regularisation adds a penalty for large weights, which discourages the model from bending itself around individual points. Off means no penalty; larger values pull every weight towards zero, giving a smoother and more cautious boundary with paler shading. Too much and the model can barely learn at all.',
   },
   knn: {

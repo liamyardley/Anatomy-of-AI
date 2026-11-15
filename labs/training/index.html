@@ -140,6 +140,22 @@
         </table>
       </div>
       <p class="small-print" id="stepsNote"></p>
+
+      <hr class="rule spaced">
+
+      <p class="crumb">Does the start matter?</p>
+      <h3 class="card-title">Runs so far</h3>
+      <p class="blurb" id="runsNote"></p>
+      <button type="button" id="startBtn" class="btn"></button>
+      <div class="table-scroll" id="runsScroll" tabindex="0" role="group" aria-label="Table of finished runs">
+        <table class="data-table">
+          <thead>
+            <tr><th scope="col">Run</th><th scope="col" class="num">Started at</th><th scope="col" class="num">Learning rate</th><th scope="col" class="num">Steps</th><th scope="col" class="num">Ended at</th><th scope="col">What happened</th></tr>
+          </thead>
+          <tbody id="runRows"></tbody>
+        </table>
+      </div>
+      <p class="small-print" id="runsEmpty"></p>
       <p class="note plain" id="linkNote"></p>
     </div>
   </section>

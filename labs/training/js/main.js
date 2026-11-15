@@ -9,7 +9,8 @@ import {
 import {
   WEIGHT_MIN, WEIGHT_MAX, makeLineData, loss, gradient, createDescent,
 } from './oneweight.js';
-import { ONE_WEIGHT, TRAIN_COPY, SEED_NOTE } from '../content/notes.js';
+import { createRng } from '../../../assets/js/rng.js';
+import { ONE_WEIGHT, TRAIN_COPY, RUNS_COPY, SEED_NOTE } from '../content/notes.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -33,6 +34,8 @@ const state = {
   phase: 'untrained', // 'untrained', 'training' or 'done'
   stale: false,      // the run on show no longer matches the settings
   showCurve: false,
+  runs: [],          // every finished run: { start, rate, steps, end, outcome }
+  starts: null,      // seeded source of new starting weights
 };
 
 function announce(message) {
@@ -169,6 +172,22 @@ function updateSteps() {
   scroller.scrollTop = scroller.scrollHeight;
 }
 
+// The finished runs, so runs from different starts can be compared.
+function updateRuns() {
+  const cell = (value) => (Math.abs(value) >= 1000 ? value.toExponential(1).replace('-', '−') : fmt(value, 2));
+  $('runRows').innerHTML = state.runs.map((r, i) => `<tr>
+    <td>${i + 1}</td>
+    <td class="num">${cell(r.start)}</td>
+    <td class="num">${r.rate}</td>
+    <td class="num">${r.steps}</td>
+    <td class="num">${cell(r.end)}</td>
+    <td>${RUNS_COPY.results[r.outcome]}</td>
+  </tr>`).join('');
+  $('runsScroll').hidden = state.runs.length === 0;
+  $('runsEmpty').hidden = state.runs.length > 0;
+  $('runsScroll').scrollTop = $('runsScroll').scrollHeight;
+}
+
 function updateTrainUI() {
   $('pauseBtn').disabled = !engine.active;
   $('pauseBtn').textContent = engine.active && !engine.running ? 'Resume' : 'Pause';
@@ -199,6 +218,7 @@ function render(flash = true) {
   drawLoss();
   updateNumbers(flash);
   updateSteps();
+  updateRuns();
   updateTrainUI();
 }
 
@@ -215,6 +235,8 @@ const engine = createEngine({
   onFinish(snapshot) {
     state.phase = 'done';
     showWeight(snapshot.w);
+    state.runs.push({ start: state.start, rate: state.rate, steps: snapshot.step, end: snapshot.w, outcome: snapshot.outcome });
+    if (state.runs.length > 30) state.runs.shift();
     render();
     announce(TRAIN_COPY[snapshot.outcome](snapshot));
   },
@@ -261,6 +283,8 @@ function newData(seed) {
   state.seed = Math.max(0, Math.min(MAX_SEED, Math.floor(seed)));
   state.data = makeLineData(state.seed);
   state.tried = [];
+  state.runs = [];
+  state.starts = createRng(state.seed, 'starts');
   $('seedInput').value = state.seed;
   $('weightRange').value = 0;
   setWeightByHand(0);
@@ -279,6 +303,18 @@ $('newDataBtn').addEventListener('click', () => {
   // source of a fresh variation. Everything after it follows from the seed.
   newData(Math.floor(Math.random() * 100000));
   announce(`New data, seed ${state.seed}.`);
+});
+
+// A new starting weight, at least a little way from the current one. It
+// comes from the seed, so the same seed offers the same starts in order.
+$('startBtn').addEventListener('click', () => {
+  let w = state.start;
+  while (Math.abs(w - state.start) < 0.6) {
+    w = Math.round(state.starts.uniform(WEIGHT_MIN, WEIGHT_MAX) * 100) / 100;
+  }
+  $('weightRange').value = w;
+  setWeightByHand(w);
+  announce(`Starting weight ${fmt(w)}. Press Train.`);
 });
 
 $('showCurve').addEventListener('change', () => {
@@ -333,6 +369,9 @@ $('updateKey').innerHTML = ONE_WEIGHT.updateKey;
 $('stepsNote').textContent = ONE_WEIGHT.stepsEmpty;
 $('linkNote').innerHTML = ONE_WEIGHT.note;
 $('seedNote').innerHTML = SEED_NOTE;
+$('runsNote').innerHTML = RUNS_COPY.intro;
+$('runsEmpty').textContent = RUNS_COPY.empty;
+$('startBtn').textContent = RUNS_COPY.startButton;
 
 renderTex($('lossTex'), 'L(w) = \\frac{1}{n}\\sum_{i=1}^{n}\\big(w\\,x_i - y_i\\big)^2', { display: true });
 renderTex($('gradientTex'), '\\text{gradient} = \\frac{2}{n}\\sum_{i=1}^{n}\\big(w\\,x_i - y_i\\big)\\,x_i', { display: true });
